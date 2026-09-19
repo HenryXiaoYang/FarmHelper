@@ -1,5 +1,8 @@
 name: Build FarmHelper V3
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -16,6 +19,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: FarmHelperV3
+          if-no-files-found: error
           path: |
             build/libs/FarmHelperV3-*.jar
             !build/libs/*-sources.jar
