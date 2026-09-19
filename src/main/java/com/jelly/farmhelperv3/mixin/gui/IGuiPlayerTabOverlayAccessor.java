@@ -1,0 +1,15 @@
+package com.jelly.farmhelperv3.mixin.gui;
+
+import net.minecraft.client.gui.components.PlayerTabOverlay;
+import net.minecraft.network.chat.Component;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.gen.Accessor;
+
+@Mixin(PlayerTabOverlay.class)
+public interface IGuiPlayerTabOverlayAccessor {
+    @Accessor
+    Component getFooter();
+
+    @Accessor
+    Component getHeader();
+}

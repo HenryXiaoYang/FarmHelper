@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "farmhelperv3",
+  "version": "${version}",
+  "name": "FarmHelper V3",
+  "description": "FarmHelper for Minecraft 26.1.2. Adapted from JellyLab's FarmHelper V2.",
+  "authors": [
+    "JellyLabScripts",
+    "FarmHelper contributors"
+  ],
+  "license": "CC-BY-NC-SA-4.0",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.jelly.farmhelperv3.FarmHelper"
+    ],
+    "modmenu": [
+      "com.jelly.farmhelperv3.config.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "mixins.farmhelperv3.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.1.2",
+    "java": ">=25",
+    "fabric-api": ">=0.155.3",
+    "baritone": "1.18.0"
+  },
+  "suggests": {
+    "modmenu": ">=18.0.1"
+  },
+  "icon": "assets/farmhelperv3/icon-mod/icon.png"
+}

@@ -1,164 +1,87 @@
-@file:Suppress("UnstableApiUsage")
-
 plugins {
-    idea
     java
-    id("cc.polyfrost.loom") version "0.10.0.5"
-    id("dev.architectury.architectury-pack200") version "0.1.3"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
-//    id("io.freefair.lombok") version "8.6"
-    id("net.kyori.blossom") version "1.3.2"
+    id("net.fabricmc.fabric-loom") version "1.17.21"
 }
 
-//Constants:
+group = "com.jelly.farmhelperv3"
+version = providers.gradleProperty("version").get()
+base { archivesName.set("FarmHelperV3") }
 
-val baseGroup: String by project
-val mcVersion: String by project
-val version: String by project
-val mixinGroup = "$baseGroup.mixin"
-val modid: String by project
-val modName: String by project
-
-// Toolchains:
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(8))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
+    withSourcesJar()
 }
-
-blossom {
-    replaceToken("%%VERSION%%", version)
-}
-
-// Minecraft configuration:
-loom {
-    launchConfigs {
-        "client" {
-            // If you don't want mixins, remove these lines
-            property("mixin.debug", "true")
-            property("asmhelper.verbose", "true")
-            arg("--tweakClass", "cc.polyfrost.oneconfig.loader.stage0.LaunchWrapperTweaker")
-            arg("-Dfml.coreMods.load", "com.jelly.farmhelperv2.transformer.FMLCore")
-            arg("--tweakClass", "com.jelly.farmhelperv2.transformer.Tweaker")
-        }
-    }
-    forge {
-        pack200Provider.set(dev.architectury.pack200.java.Pack200Adapter())
-        // If you don't want mixins, remove this lines
-        mixinConfig("mixins.$modid.json", "mixins.baritone.json")
-    }
-    // If you don't want mixins, remove these lines
-    mixin {
-        defaultRefmapName.set("mixins.$modid.refmap.json")
-    }
-}
-
-sourceSets.main {
-    output.setResourcesDir(sourceSets.main.flatMap { it.java.classesDirectory })
-}
-
-// Dependencies:
 
 repositories {
     mavenCentral()
-    maven("https://repo.spongepowered.org/maven/")
-    maven("https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1")
-    maven("https://repo.polyfrost.cc/releases")
-    maven("https://repo.essential.gg/repository/maven-public")
-    maven("https://jitpack.io")
+    maven("https://maven.terraformersmc.com/releases/")
+    exclusiveContent {
+        forRepository { ivy {
+            name = "BaritoneReleases"
+            url = uri("https://github.com/cabaletta/baritone/releases/download")
+            patternLayout { artifact("v[revision]/[artifact]-[revision].[ext]") }
+            metadataSources { artifact() }
+        } }
+        filter { includeGroup("baritone") }
+    }
 }
 
-val shadowImpl: Configuration by configurations.creating {
-    configurations.implementation.get().extendsFrom(this)
-}
+val bundled by configurations.creating
+configurations.implementation { extendsFrom(bundled) }
 
 dependencies {
-    minecraft("com.mojang:minecraft:1.8.9")
-    mappings("de.oceanlabs.mcp:mcp_stable:22-1.8.9")
-    forge("net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9")
-
-    compileOnly("cc.polyfrost:oneconfig-1.8.9-forge:0.2.1-alpha+")
-    shadowImpl("cc.polyfrost:oneconfig-wrapper-launchwrapper:1.0.0-beta+")
-
-    compileOnly("org.spongepowered:mixin:0.8.5")
-    annotationProcessor("org.spongepowered:mixin:0.8.5")
-
-    compileOnly("org.projectlombok:lombok:1.18.34")
-    annotationProcessor("org.projectlombok:lombok:1.18.34")
-
-    shadowImpl("org.java-websocket:Java-WebSocket:1.5.7")
-
-    implementation("me.djtheredstoner:DevAuth-forge-legacy:1.2.1")
-
-    implementation("net.dv8tion:JDA:5.0.0-beta.24")
-
-    implementation("com.github.onixiya1337.baritone-fly:baritone-deobf:nirox-fly-SNAPSHOT")
-    shadowImpl("com.github.onixiya1337.baritone-fly:baritone-api-forge:nirox-fly-SNAPSHOT") {
-        exclude(module = "fastutil")
-        exclude(module = "lwjgl")
-        exclude(module = "SimpleTweaker")
-        exclude(module = "launchwrapper")
+    minecraft("com.mojang:minecraft:26.1.2")
+    implementation("net.fabricmc:fabric-loader:0.19.5")
+    implementation("net.fabricmc.fabric-api:fabric-api:0.155.3+26.1.2")
+    compileOnly("com.terraformersmc:modmenu:18.0.1")
+    if (!providers.gradleProperty("withoutModMenu").isPresent) runtimeOnly("com.terraformersmc:modmenu:18.0.1")
+    implementation("baritone:baritone-api-fabric:1.18.0")
+    compileOnly("org.projectlombok:lombok:1.18.42")
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
+    implementation("io.netty:netty-handler-proxy:4.2.7.Final")
+    include("io.netty:netty-handler-proxy:4.2.7.Final")
+    include("io.netty:netty-codec-socks:4.2.7.Final")
+    implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    include("org.java-websocket:Java-WebSocket:1.5.7")
+    bundled("net.dv8tion:JDA:5.0.0-beta.24") {
+        exclude(group = "org.slf4j")
+        exclude(group = "net.java.dev.jna") // Minecraft supplies its current JNA runtime.
     }
 }
 
-// Tasks:
-
-tasks.withType(JavaCompile::class) {
+tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-}
-
-tasks.withType(Jar::class) {
-    archiveBaseName.set(modName)
-    manifest.attributes.run {
-        this["FMLCorePlugin"] = "com.jelly.farmhelperv2.transformer.FMLCore"
-        this["FMLCorePluginContainsFMLMod"] = "true"
-        this["ForceLoadAsMod"] = "true"
-        this["TweakOrder"] = "0"
-        this["ModSide"] = "CLIENT"
-
-        // If you don't want mixins, remove these lines
-        this["TweakClass"] = "cc.polyfrost.oneconfig.loader.stage0.LaunchWrapperTweaker"
-        this["MixinConfigs"] = "mixins.$modid.json, mixins.baritone.json"
-    }
+    options.release.set(25)
 }
 
 tasks.processResources {
     inputs.property("version", project.version)
-    inputs.property("mcversion", mcVersion)
-    inputs.property("modid", modid)
-    inputs.property("modName", modName)
-    inputs.property("mixinGroup", mixinGroup)
+    filesMatching("fabric.mod.json") { expand("version" to project.version) }
+}
 
-    filesMatching(listOf("mcmod.info", "mixins.$modid.json")) {
-        expand(inputs.properties)
+tasks.jar { from("LICENSE") { rename { "LICENSE_FarmHelperV3" } } }
+
+// Fabric nests these libraries; the release jar does not require the old Forge JDA wrapper.
+bundled.resolvedConfiguration.resolvedArtifacts.forEach { artifact ->
+    val id = artifact.moduleVersion.id
+    dependencies.add("include", "${id.group}:${id.name}:${id.version}" + (artifact.classifier?.let { ":$it" } ?: ""))
+}
+
+if (providers.gradleProperty("smokeTest").isPresent) {
+    loom.runs.named("client") {
+        vmArg("-Dfarmhelperv3.smokeTest=true")
+        runDir("build/smoke-run")
     }
-
-    rename("(.+_at.cfg)", "META-INF/$1")
 }
 
-
-val remapJar by tasks.named<net.fabricmc.loom.task.RemapJarTask>("remapJar") {
-    archiveClassifier.set("")
-    from(tasks.shadowJar)
-    input.set(tasks.shadowJar.get().archiveFile)
+val portChecks by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Check event dispatch and V2 settings conversion without launching Minecraft."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.jelly.farmhelperv3.PortChecks")
 }
+tasks.check { dependsOn(portChecks) }
 
-tasks.jar {
-    archiveClassifier.set("without-deps")
-    destinationDirectory.set(layout.buildDirectory.dir("badjars"))
-}
-
-tasks.shadowJar {
-    destinationDirectory.set(layout.buildDirectory.dir("badjars"))
-    archiveClassifier.set("all-dev")
-    configurations = listOf(shadowImpl)
-    doLast {
-        configurations.forEach {
-            println("Copying jars into mod: ${it.files}")
-        }
-    }
-
-    // If you want to include other dependencies and shadow them, you can relocate them in here
-    fun relocate(name: String) = relocate(name, "$baseGroup.deps.$name")
-}
-
-tasks.assemble.get().dependsOn(tasks.remapJar)
-
+// Regression checks use a plain Java entrypoint instead of a JUnit dependency.
+tasks.test { failOnNoDiscoveredTests.set(false) }

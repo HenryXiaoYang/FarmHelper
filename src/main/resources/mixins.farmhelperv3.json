@@ -1,0 +1,40 @@
+{
+  "package": "com.jelly.farmhelperv3.mixin",
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "client.EntityPlayerAccessor",
+    "client.MixinChunk",
+    "client.MixinMouse",
+    "network.MixinNetworkManager",
+    "pathfinder.MixinChunkProviderClient",
+    "block.CropShapeMixin"
+  ],
+  "client": [
+    "block.MixinBlockRendererDispatcher",
+    "client.EntityPlayerSPAccessor",
+    "client.MinecraftAccessor",
+    "client.MixinEntityPlayerSP",
+    "client.MixinKeyBinding",
+    "client.MixinMinecraft",
+    "client.MixinPlayerControllerMP",
+    "client.MixinSoundManager",
+    "gui.AccessorGuiEditSign",
+    "gui.IGuiPlayerTabOverlayAccessor",
+    "gui.MixinGuiContainer",
+    "gui.MixinGuiDisconnected",
+    "gui.MixinGuiMainMenu",
+    "gui.MixinGuiMultiplayer",
+    "network.MixinNetHandlerPlayClient",
+    "render.MixinEffectRenderer",
+    "render.MixinEntityRenderer",
+    "render.MixinModelBiped",
+    "client.EntityTurnMixin",
+    "client.KeyboardMixin",
+    "client.LivingEntityMixin"
+  ],
+  "required": true,
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
