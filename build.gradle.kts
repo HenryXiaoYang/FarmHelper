@@ -78,6 +78,7 @@ if (providers.gradleProperty("smokeTest").isPresent) {
         vmArg("-Dfarmhelperv3.smokeTest=true")
         if (providers.gradleProperty("settingsPreview").isPresent) vmArg("-Dfarmhelperv3.settingsPreview=true")
         if (providers.gradleProperty("settingsPreview").orNull == "confirmation") vmArg("-Dfarmhelperv3.confirmationPreview=true")
+        if (providers.gradleProperty("settingsPreview").orNull == "hud") vmArg("-Dfarmhelperv3.hudPreview=true")
         if (providers.gradleProperty("checkWorld").isPresent) vmArg("-Dfarmhelperv3.checkWorld=true")
         runDir("build/smoke-run")
     }

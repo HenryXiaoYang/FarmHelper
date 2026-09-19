@@ -102,7 +102,8 @@ public final class RenderChecks {
             mc.options.setCameraType(CameraType.FIRST_PERSON); Freelook.getInstance().start();
             Freelook.getInstance().setCameraYaw(15); Freelook.getInstance().setCameraPitch(0);
         } else {
-            cleanup(); System.out.println("FH CHECKS: overlay frame coordinates, through-wall pipelines, first/third-person/Freelook GPU rendering passed"); mc.stop();
+            cleanup(); System.out.println("FH CHECKS: overlay frame coordinates, through-wall pipelines, first/third-person/Freelook GPU rendering passed");
+            if (Boolean.getBoolean("farmhelperv3.hudPreview")) HudEditorChecks.preview(mc, true); else mc.stop();
         }
     }
     private void cleanup() {

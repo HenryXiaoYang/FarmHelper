@@ -26,21 +26,21 @@ public class UsageStatsHUD extends TextHud {
         if (FarmHelperConfig.showStats24H) {
             String colour = "";
             if (FarmHelperConfig.colourCode24H) {
-                double hrs = UsageStatsTracker.getInstance().getTodayMillis() / 3_600_000.0;
+                double hrs = example ? 2.5 : UsageStatsTracker.getInstance().getTodayMillis() / 3_600_000.0;
                 if (hrs < 3.5)        colour = "§a";
                 else if (hrs < 7.0)   colour = "§6";
                 else                  colour = "§c";
             }
-            lines.add("24 hour:  " + colour + UsageStatsTracker.getInstance().getTodayString());
+            lines.add("24 hour:  " + colour + (example ? "2h 30m" : UsageStatsTracker.getInstance().getTodayString()));
         }
         if (FarmHelperConfig.showStats7D) {
-            lines.add("7 day:  §a" + UsageStatsTracker.getInstance().get7dString());
+            lines.add("7 day:  §a" + (example ? "12h 45m" : UsageStatsTracker.getInstance().get7dString()));
         }
         if (FarmHelperConfig.showStats30D) {
-            lines.add("30 day:  §a" + UsageStatsTracker.getInstance().get30dString());
+            lines.add("30 day:  §a" + (example ? "40h 15m" : UsageStatsTracker.getInstance().get30dString()));
         }
         if (FarmHelperConfig.showStatsLifetime) {
-            lines.add("lifetime: §a" + UsageStatsTracker.getInstance().getTotalString());
+            lines.add("lifetime: §a" + (example ? "128h 30m" : UsageStatsTracker.getInstance().getTotalString()));
         }
         if (!FarmHelperConfig.showStatsTitle &&!FarmHelperConfig.showStats24H && !FarmHelperConfig.showStats7D && !FarmHelperConfig.showStats30D && !FarmHelperConfig.showStatsLifetime) {
             lines.add("§cEnable usage stats in the HUD config menu");

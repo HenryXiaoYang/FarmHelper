@@ -25,6 +25,7 @@ public class ProfitCalculatorHUD extends TextHud {
 
     @Override
     protected void getLines(List<String> output, boolean example) {
+        if (example) { output.addAll(List.of("§eProfit: §f1,250,000", "§eProfit/h: §f4,500,000", "§a19.5 BPS", "§fRuntime: 00:16:40")); return; }
         addLines();
         lines.forEach(line -> output.add(line.getLeft()));
     }
@@ -32,8 +33,8 @@ public class ProfitCalculatorHUD extends TextHud {
     private static final java.util.Map<String, int[]> iconSizes = new java.util.HashMap<>();
     @Override protected int contentInset() { return 16; }
     @Override protected int lineHeight() { return 15; }
-    @Override protected void drawLine(net.minecraft.client.gui.GuiGraphicsExtractor graphics, String text, int index, int left, int top) {
-        String path = lines.get(index).getRight();
+    @Override protected void drawLine(net.minecraft.client.gui.GuiGraphicsExtractor graphics, String text, int index, int left, int top, boolean example) {
+        String path = example ? "/assets/farmhelperv3/textures/gui/" + List.of("profit.png", "profithr.png", "bps.png", "runtime.png").get(index) : lines.get(index).getRight();
         if (path != null) {
             int[] size = iconSizes.computeIfAbsent(path, resource -> {
                 try (var stream = getClass().getResourceAsStream(resource)) {
@@ -49,7 +50,7 @@ public class ProfitCalculatorHUD extends TextHud {
                 net.minecraft.resources.Identifier.fromNamespaceAndPath("farmhelperv3", path.substring("/assets/farmhelperv3/".length())), 0, 0, 0f, 0f, size[0], size[1], size[0], size[1]);
             graphics.pose().popMatrix();
         }
-        super.drawLine(graphics, text, index, left, top);
+        super.drawLine(graphics, text, index, left, top, example);
     }
 
     @Override

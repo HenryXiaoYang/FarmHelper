@@ -295,8 +295,10 @@ public final class ClientChecks implements ClientModInitializer {
         check(mc.screen == parent, "Done returns to parent");
         System.out.println("FH CHECKS: keybinding cancel and Done persistence passed");
 
+        HudEditorChecks.run(mc);
         if (Boolean.getBoolean("farmhelperv3.settingsPreview")) {
             SettingsScreen preview = new SettingsScreen(parent, FarmHelper.config); mc.setScreen(preview);
+            if (Boolean.getBoolean("farmhelperv3.hudPreview") && !Boolean.getBoolean("farmhelperv3.checkWorld")) HudEditorChecks.preview(mc, false);
             if (Boolean.getBoolean("farmhelperv3.confirmationPreview")) {
                 boolean oldDebug = FarmHelperConfig.debugMode;
                 FarmHelperConfig.debugMode = !oldDebug; preview.onClose();

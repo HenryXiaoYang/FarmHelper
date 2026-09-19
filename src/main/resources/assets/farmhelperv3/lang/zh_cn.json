@@ -5,5 +5,17 @@
   "farmhelperv3.settings.save_exit": "保存并退出",
   "farmhelperv3.settings.apply_back": "应用并返回",
   "farmhelperv3.settings.discard_exit": "放弃修改",
-  "farmhelperv3.settings.keep_editing": "继续编辑"
+  "farmhelperv3.settings.keep_editing": "继续编辑",
+  "farmhelperv3.hud.title": "FarmHelper HUD 布局编辑（预览）",
+  "farmhelperv3.hud.hint": "拖动定位 · 滚轮缩放 · 方向键微调 · Shift 自由拖动 / 每次移动 10 像素",
+  "farmhelperv3.hud.edit": "编辑 HUD 布局",
+  "farmhelperv3.hud.description": "拖动和缩放 FarmHelper HUD 的示例预览，隐藏的 HUD 也可以定位。",
+  "farmhelperv3.hud.status": "状态",
+  "farmhelperv3.hud.profit": "收益",
+  "farmhelperv3.hud.usage": "使用统计",
+  "farmhelperv3.hud.debug": "调试",
+  "farmhelperv3.hud.enabled": "启用：%s",
+  "farmhelperv3.hud.hidden": "（已隐藏）",
+  "farmhelperv3.hud.arrange": "自动排列",
+  "farmhelperv3.hud.save_error": "保存失败，请查看游戏日志。"
 }

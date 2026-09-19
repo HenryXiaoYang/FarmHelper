@@ -5,5 +5,17 @@
   "farmhelperv3.settings.save_exit": "Save and exit",
   "farmhelperv3.settings.apply_back": "Apply and go back",
   "farmhelperv3.settings.discard_exit": "Discard changes",
-  "farmhelperv3.settings.keep_editing": "Keep editing"
+  "farmhelperv3.settings.keep_editing": "Keep editing",
+  "farmhelperv3.hud.title": "FarmHelper HUD Editor (Preview)",
+  "farmhelperv3.hud.hint": "Drag to move • Scroll to scale • Arrows to nudge • Shift for free drag / 10 px steps",
+  "farmhelperv3.hud.edit": "Edit HUD Layout",
+  "farmhelperv3.hud.description": "Drag and resize sample previews of all FarmHelper HUDs, including hidden ones.",
+  "farmhelperv3.hud.status": "Status",
+  "farmhelperv3.hud.profit": "Profit",
+  "farmhelperv3.hud.usage": "Usage",
+  "farmhelperv3.hud.debug": "Debug",
+  "farmhelperv3.hud.enabled": "Enabled: %s",
+  "farmhelperv3.hud.hidden": "(hidden)",
+  "farmhelperv3.hud.arrange": "Auto arrange",
+  "farmhelperv3.hud.save_error": "Could not save. See the game log."
 }

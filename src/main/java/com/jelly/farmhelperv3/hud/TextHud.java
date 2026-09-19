@@ -38,7 +38,7 @@ public abstract class TextHud {
     protected abstract void getLines(List<String> lines, boolean example);
     protected boolean shouldShow() {
         var mc = Minecraft.getInstance();
-        if (!enabled || mc.player == null) return false;
+        if (!enabled || mc.player == null || mc.screen instanceof com.jelly.farmhelperv3.config.HudEditorScreen) return false;
         if (!showInDebug && mc.getDebugOverlay().showDebugScreen()) return false;
         if (mc.screen instanceof net.minecraft.client.gui.screens.ChatScreen) return showInChat;
         return mc.screen == null || showInGuis;
@@ -47,7 +47,7 @@ public abstract class TextHud {
     protected float getCharWidth(char c) { return Minecraft.getInstance().font.width(String.valueOf(c)); }
     protected int lineHeight() { return 12; }
     protected int contentInset() { return 0; }
-    protected void drawLine(GuiGraphicsExtractor graphics, String text, int index, int left, int top) {
+    protected void drawLine(GuiGraphicsExtractor graphics, String text, int index, int left, int top, boolean example) {
         var font = Minecraft.getInstance().font;
         if (textType == 2) {
             String plain = net.minecraft.ChatFormatting.stripFormatting(text);
@@ -58,17 +58,39 @@ public abstract class TextHud {
         }
         graphics.text(font, text, left, top, color.getRGB(), textType == 1);
     }
-    public void render(GuiGraphicsExtractor graphics) {
-        if (!shouldShow()) return;
-        List<String> lines = new ArrayList<>();
-        getLines(lines, false);
-        int width = lines.stream().mapToInt(Minecraft.getInstance().font::width).max().orElse(0) + (int) paddingX * 2 + contentInset();
-        int height = lines.size() * lineHeight() + (int) paddingY * 2;
+    public record Bounds(float left, float top, float width, float height) {
+        public boolean contains(double x, double y) { return x >= left && y >= top && x < left + width && y < top + height; }
+    }
+    private List<String> lines(boolean example) {
+        List<String> lines = new ArrayList<>(); getLines(lines, example); return lines;
+    }
+    private int contentWidth(List<String> lines) {
+        return lines.stream().mapToInt(Minecraft.getInstance().font::width).max().orElse(0) + (int)paddingX * 2 + contentInset();
+    }
+    private int contentHeight(List<String> lines) { return lines.size() * lineHeight() + (int)paddingY * 2; }
+    private Bounds bounds(List<String> lines, int screenWidth, int screenHeight) {
+        float width = contentWidth(lines) * scale, height = contentHeight(lines) * scale;
+        float left = x + (anchor % 3) / 2f * (screenWidth - width);
+        float top = y + (anchor / 3) / 2f * (screenHeight - height);
+        return new Bounds(Math.max(0, Math.min(left, screenWidth - width)), Math.max(0, Math.min(top, screenHeight - height)), width, height);
+    }
+    public Bounds previewBounds(int screenWidth, int screenHeight) { return bounds(lines(true), screenWidth, screenHeight); }
+    public void setPosition(float left, float top, int screenWidth, int screenHeight) {
+        Bounds size = previewBounds(screenWidth, screenHeight);
+        left = Math.max(0, Math.min(left, screenWidth - size.width));
+        top = Math.max(0, Math.min(top, screenHeight - size.height));
+        x = left - (anchor % 3) / 2f * (screenWidth - size.width);
+        y = top - (anchor / 3) / 2f * (screenHeight - size.height);
+    }
+    public void render(GuiGraphicsExtractor graphics) { if (shouldShow()) render(graphics, false); }
+    public void renderPreview(GuiGraphicsExtractor graphics) { render(graphics, true); }
+    private void render(GuiGraphicsExtractor graphics, boolean example) {
+        List<String> lines = lines(example);
+        if (lines.isEmpty()) return;
+        int width = contentWidth(lines), height = contentHeight(lines);
+        Bounds bounds = bounds(lines, graphics.guiWidth(), graphics.guiHeight());
         graphics.pose().pushMatrix();
-        float anchorX = (anchor % 3) / 2f, anchorY = (anchor / 3) / 2f;
-        float left = x + anchorX * (graphics.guiWidth() - width * scale);
-        float top = y + anchorY * (graphics.guiHeight() - height * scale);
-        graphics.pose().translate(Math.max(0, Math.min(left, graphics.guiWidth() - width * scale)), Math.max(0, Math.min(top, graphics.guiHeight() - height * scale)));
+        graphics.pose().translate(bounds.left, bounds.top);
         graphics.pose().scale(scale, scale);
         if (background) {
             int radius = rounded ? Math.min((int)cornerRadius, Math.min(width, height) / 2) : 0;
@@ -80,7 +102,7 @@ public abstract class TextHud {
             }
         }
         if (border) for (int i = 0; i < Math.max(1, (int)borderSize); i++) graphics.outline(i, i, width - i * 2, height - i * 2, borderColor.getRGB());
-        for (int i = 0; i < lines.size(); i++) drawLine(graphics, lines.get(i), i, (int)paddingX + contentInset(), (int)paddingY + i * lineHeight());
+        for (int i = 0; i < lines.size(); i++) drawLine(graphics, lines.get(i), i, (int)paddingX + contentInset(), (int)paddingY + i * lineHeight(), example);
         graphics.pose().popMatrix();
     }
 }

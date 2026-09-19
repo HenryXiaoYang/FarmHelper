@@ -36,6 +36,12 @@ public class StatusHUD extends TextHud {
 
     @Override
     protected void getLines(List<String> lines, boolean example) {
+        if (example) {
+            List<String> sample = List.of("§bFarming", "Pests in Garden: §c3", "§7Harvesting crops");
+            float width = getWidth(sample);
+            sample.forEach(line -> lines.add(centerText(line, width)));
+            return;
+        }
         List<String> tempLines = new ArrayList<>(getStatusString());
 
         if (GameStateHandler.getInstance().getPestsCount() > 0) {

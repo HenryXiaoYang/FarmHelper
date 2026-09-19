@@ -24,6 +24,8 @@ Mod Menu is optional. `/fh`, `/farmhelper`, and the default **F** key also open 
 
 Settings live in `.minecraft/config/farmhelperv3/config.json`. The settings screen uses a category sidebar and a scrolling detail panel, with inline descriptions, search across categories, dependent controls, HUD pages, colors, and keyboard/mouse bindings. Settings are organized into 13 main categories, with startup controls before detailed options. Done saves; Cancel or Escape asks whether to save, discard, or keep editing when there are unsaved changes. Unchanged screens close directly. The same protection covers nested pages and multiline drafts. Backspace/Delete clears a binding.
 
+To position HUDs visually, open **HUD & Overlays → Edit HUD Layout**, or run `/fh hud` in a world. Drag Status, Profit, Usage, and Debug previews to place them; use the mouse wheel to scale and arrow keys to nudge. Hold Shift for free dragging or 10-pixel keyboard steps. Auto arrange separates overlapping HUDs. Done saves (or applies back to settings); leaving with changes offers save/discard confirmation.
+
 On first V3 startup, the mod looks for V2 settings in the default OneConfig profile, the legacy OneConfig config directory, and `config/farmhelper/config.json`. It copies a backup to `config/farmhelperv3/v2-config.backup.json`, converts keycodes/colors/HUD positions, and preserves the originals. Existing V3 settings take precedence.
 
 Rewarp points and plot data move to `config/farmhelperv3`; statistics and custom movement recordings are copied to its `data` directory. Custom recordings belong in `config/farmhelperv3/data/movrec`. A custom `farmhelper_sound.wav` still belongs in the game directory.

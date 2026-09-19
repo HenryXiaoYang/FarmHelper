@@ -27,6 +27,7 @@ public final class SettingsScreen extends Screen {
     private String category = "";
     private SettingsList categories, options;
     private EditBox filter;
+    private Button hudLayoutButton;
     private int sidebarWidth;
     private final Map<NativeConfig.Entry, Object> original = new LinkedHashMap<>();
     private final Map<NativeConfig.Entry, String> drafts = new HashMap<>();
@@ -116,6 +117,17 @@ public final class SettingsScreen extends Screen {
         categories.setScrollAmount(sidebarScroll);
         controls.clear(); options.clear();
         shown = filtered();
+        hudLayoutButton = null;
+        String query = search.strip().toLowerCase(Locale.ROOT);
+        if ((owner == config || owner instanceof com.jelly.farmhelperv3.hud.TextHud)
+                && (query.isEmpty() ? category.equals("HUD & Overlays") || owner instanceof com.jelly.farmhelperv3.hud.TextHud : "edit hud layout position".contains(query))) {
+            hudLayoutButton = new FlatButton(Component.translatable("farmhelperv3.hud.edit"), b -> {
+                if (invalid.isEmpty() && binding == null) minecraft.setScreen(new HudEditorScreen(this, config, owner instanceof com.jelly.farmhelperv3.hud.TextHud hud ? hud : null));
+            }, false, Component.translatable("farmhelperv3.hud.edit").getString());
+            hudLayoutButton.setWidth(valueWidth());
+            Row layout = new Row(Component.translatable("farmhelperv3.hud.edit").getString(), Component.translatable("farmhelperv3.hud.description").getString(), hudLayoutButton, false);
+            options.append(layout, layout.heightFor(options.getRowWidth()));
+        }
         String heading = null;
         for (var entry : shown) {
             String group = groupOf(entry);
@@ -223,6 +235,7 @@ public final class SettingsScreen extends Screen {
     @Override public void tick() {
         controls.forEach((entry, widget) -> widget.active = config.enabled(entry) && entry.setting().kind() != Setting.Kind.INFO
                 && (invalid.isEmpty() || invalid.contains(entry)) && (!(entry.get() instanceof Runnable) || minecraft.player != null));
+        if (hudLayoutButton != null) hudLayoutButton.active = invalid.isEmpty() && binding == null;
         if (filter != null) filter.setEditable(invalid.isEmpty() && binding == null);
     }
     @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
@@ -348,7 +361,7 @@ public final class SettingsScreen extends Screen {
             if (!navigation) g.text(font, "›", getRight() - 6, getY() + 6, active ? 0xffaaaaaa : 0xff555555);
         }
     }
-    private static final class ExitConfirmation extends Screen {
+    static final class ExitConfirmation extends Screen {
         private final Screen editor;
         private final Runnable save, discard;
         private final Component saveLabel, message;

@@ -27,6 +27,7 @@ public class DebugHUD extends TextHud {
 
     @Override
     protected void getLines(List<String> lines, boolean example) {
+        if (example) { lines.addAll(List.of("§lFarmHelper Debug", "Location: Garden", "Crop: Carrot", "State: Harvesting", "BPS: 19.5")); return; }
         if (!FarmHelperConfig.debugMode) return;
         if (Minecraft.getInstance().player == null || Minecraft.getInstance().level == null) return;
         lines.add("§lFarmHelper v" + FarmHelper.VERSION + " Debug HUD");

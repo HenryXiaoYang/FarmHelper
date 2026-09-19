@@ -29,6 +29,13 @@ public class FarmHelperMainCommand {
             FarmHelperMainCommand commands = new FarmHelperMainCommand();
             for (String alias : new String[]{"fh", "farmhelper"}) {
                 var root = literal(alias).executes(context -> { commands.mainCommand(); return 1; });
+                root.then(literal("hud").executes(c -> {
+                    com.jelly.farmhelperv3.util.Tasks.schedule(() -> {
+                        var client = net.minecraft.client.Minecraft.getInstance();
+                        client.setScreen(new com.jelly.farmhelperv3.config.HudEditorScreen(client.screen, com.jelly.farmhelperv3.FarmHelper.config));
+                    }, 0, java.util.concurrent.TimeUnit.MILLISECONDS);
+                    return 1;
+                }));
                 root.then(literal("stoppath").executes(c -> { commands.stoppath(); return 1; }));
                 root.then(literal("sp").executes(c -> { commands.stoppath(); return 1; }));
                 root.then(literal("update").executes(c -> { commands.update(); return 1; }));
