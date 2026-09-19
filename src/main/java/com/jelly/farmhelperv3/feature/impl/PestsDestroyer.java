@@ -299,45 +299,35 @@ public class PestsDestroyer implements IFeature {
         return canEnableMacro(false);
     }
 
+    private static final String FLIGHT_REQUIRED = "Flight permission is required to reach pests.";
+
+    public void startManually() {
+        String reason = startBlockReason(true);
+        if (reason != null) { LogUtils.sendError("[Pests Destroyer] " + reason); return; }
+        start();
+    }
+
     public boolean canEnableMacro(boolean manually) {
-        if (!isToggled()) {
-            return false;
+        String reason = startBlockReason(manually);
+        if (FLIGHT_REQUIRED.equals(reason) && FarmHelperConfig.pestsDestroyerAfkInfiniteMode) {
+            LogUtils.sendError("[Pests Destroyer] You need to be able to fly. AFK mode disabled.");
+            FarmHelperConfig.pestsDestroyerAfkInfiniteMode = false;
         }
-        if (isRunning()) {
-            return false;
-        }
-        if (!GameStateHandler.getInstance().inGarden()) {
-            return false;
-        }
-        if (!MacroHandler.getInstance().isMacroToggled() && !manually) {
-            return false;
-        }
-        if (!FailsafeManager.getInstance().getEmergencyQueue().isEmpty()) {
-            return false;
-        }
-        if (FailsafeManager.getInstance().triggeredFailsafe.isPresent()) {
-            return false;
-        }
-        if (enabled || preparing) {
-            return false;
-        }
-        if (GameStateHandler.getInstance().getPestsCount() < FarmHelperConfig.startKillingPestsAt && !manually || (manually
-                && GameStateHandler.getInstance().getPestsCount() == 0)) {
-            return false;
-        }
-        if (!manually && FarmHelperConfig.pausePestsDestroyerDuringJacobsContest && GameStateHandler.getInstance().inJacobContest()) {
-            LogUtils.sendError("[Pests Destroyer] Pests Destroyer won't activate during Jacob's Contest!");
-            return false;
-        }
-        if (!mc.player.getAbilities().mayfly) {
-            LogUtils.sendError("[Pests Destroyer] You need to be able to fly!");
-            if (FarmHelperConfig.pestsDestroyerAfkInfiniteMode) {
-                LogUtils.sendWarning("[Pests Destroyer] Disabling Pests Destroyer AFK Infinite Mode!");
-                FarmHelperConfig.pestsDestroyerAfkInfiniteMode = false;
-            }
-            return false;
-        }
-        return true;
+        return reason == null;
+    }
+
+    private String startBlockReason(boolean manually) {
+        if (!isToggled()) return "Turn on Enable Pests Destroyer in settings first.";
+        if (isRunning()) return "Pest clearing is already running or preparing.";
+        if (mc.player == null || mc.level == null || !GameStateHandler.getInstance().inGarden()) return "Enter your Garden first.";
+        if (!MacroHandler.getInstance().isMacroToggled() && !manually) return "Start farming, or enable AFK Infinite mode to clear pests while idle.";
+        if (!FailsafeManager.getInstance().getEmergencyQueue().isEmpty() || FailsafeManager.getInstance().triggeredFailsafe.isPresent()) return "A failsafe is pending or running.";
+        int count = GameStateHandler.getInstance().getPestsCount();
+        if (count == 0) return "No pests detected in Tab or the scoreboard. Enable the Pests widget in your Garden Tab settings.";
+        if (!manually && count < FarmHelperConfig.startKillingPestsAt) return "Waiting for " + FarmHelperConfig.startKillingPestsAt + " pests; detected " + count + ".";
+        if (!manually && FarmHelperConfig.pausePestsDestroyerDuringJacobsContest && GameStateHandler.getInstance().inJacobContest()) return "Pest clearing is paused during Jacob's Contest.";
+        if (!mc.player.getAbilities().mayfly) return FLIGHT_REQUIRED;
+        return null;
     }
 
     @SubscribeEvent
@@ -353,7 +343,7 @@ public class PestsDestroyer implements IFeature {
             if (vacuumSlot != null) {
                 ItemStack vacuumItem = vacuumSlot.getItem();
                 for (Map.Entry<String, Float> vacuumRange : this.vacuumRange.entrySet()) {
-                    if (vacuumItem.getDisplayName().getString().contains(vacuumRange.getKey())) {
+                    if (vacuumItem.getHoverName().getString().contains(vacuumRange.getKey())) {
                         currentVacuumRange = vacuumRange.getValue();
                         gotRangeOfVacuum = true;
                         LogUtils.sendDebug("[Pests Destroyer] Found vacuum range: " + currentVacuumRange);
@@ -1135,7 +1125,7 @@ public class PestsDestroyer implements IFeature {
     }
 
     public boolean getVacuum(ItemStack currentItem2) {
-        if (currentItem2 == null || !currentItem2.getDisplayName().getString().contains("Vacuum")) {
+        if (currentItem2 == null || !currentItem2.getHoverName().getString().contains("Vacuum")) {
             int vacuum = InventoryUtils.getSlotIdOfItemInHotbar("Vacuum");
             if (vacuum == -1) {
                 LogUtils.sendError("[Pests Destroyer] Failed to find vacuum in hotbar!");
@@ -1297,7 +1287,7 @@ public class PestsDestroyer implements IFeature {
                 }
                 if (killedEntities.stream().noneMatch(ke -> ke.distanceTo(entity) < 1.5)) {
                     if (!FarmHelperConfig.streamerMode) {
-                        drawESP(entity);
+                        drawESP(entity, event.partialTicks);
                     }
                     return true;
                 }
@@ -1313,9 +1303,6 @@ public class PestsDestroyer implements IFeature {
             return;
         }
 
-        double d0 = Minecraft.getInstance().gameRenderer.getMainCamera().position().x;
-        double d1 = Minecraft.getInstance().gameRenderer.getMainCamera().position().y;
-        double d2 = Minecraft.getInstance().gameRenderer.getMainCamera().position().z;
         for (int plotNumber : GameStateHandler.getInstance().getInfestedPlots()) {
             List<Pair<Integer, Integer>> chunks = PlotUtils.getPlotChunksBasedOnNumber(plotNumber);
             if (chunks.isEmpty()) {
@@ -1325,7 +1312,6 @@ public class PestsDestroyer implements IFeature {
                     chunks.get(chunks.size() - 1).getLeft() * 16 + 16, 80, chunks.get(chunks.size() - 1).getRight() * 16 + 16);
             float centerX = (float) (boundingBox.minX + (boundingBox.maxX - boundingBox.minX) / 2);
             float centerZ = (float) (boundingBox.minZ + (boundingBox.maxZ - boundingBox.minZ) / 2);
-            boundingBox = boundingBox.move(-d0, -d1, -d2);
             RenderUtils.drawBox(boundingBox, FarmHelperConfig.plotHighlightColor.toJavaColor());
             RenderUtils.drawText("Plot " + plotNumber, centerX, 80, centerZ, 1);
         }
@@ -1335,11 +1321,11 @@ public class PestsDestroyer implements IFeature {
         }
 
         ItemStack currentItem = mc.player.getMainHandItem();
-        if ((currentItem == null || currentItem.isEmpty()) || !currentItem.getDisplayName().getString().contains("Vacuum")) {
+        if ((currentItem == null || currentItem.isEmpty()) || !currentItem.getHoverName().getString().contains("Vacuum")) {
             return;
         }
         Vec3 lookVec = mc.player.getLookAngle();
-        Vec3 playerPos = new Vec3(0, mc.player.getEyeHeight(), 0);
+        Vec3 playerPos = mc.player.getEyePosition(event.partialTicks);
         Vec3 vacuumRange = playerPos.add(lookVec.x * currentVacuumRange, lookVec.y * currentVacuumRange,
                 lookVec.z * currentVacuumRange);
         AABB aabb = new AABB(vacuumRange.x - 0.05, vacuumRange.y - 0.05, vacuumRange.z - 0.05,
@@ -1348,18 +1334,15 @@ public class PestsDestroyer implements IFeature {
         RenderUtils.drawBox(aabb, vacuumRangeColor);
     }
 
-    private void drawESP(Entity entity) {
-        AABB boundingBox = new AABB(entity.getX() - 0.5, entity.getY() + entity.getEyeHeight() - 0.35, entity.getZ() - 0.5,
-                entity.getX() + 0.5,
-                entity.getY() + entity.getEyeHeight() + 0.65, entity.getZ() + 0.5);
-        double d0 = Minecraft.getInstance().gameRenderer.getMainCamera().position().x;
-        double d1 = Minecraft.getInstance().gameRenderer.getMainCamera().position().y;
-        double d2 = Minecraft.getInstance().gameRenderer.getMainCamera().position().z;
-        boundingBox = boundingBox.move(-d0, -d1, -d2);
+    private void drawESP(Entity entity, float partialTicks) {
+        Vec3 position = entity.getPosition(partialTicks);
+        AABB boundingBox = new AABB(position.x - 0.5, position.y + entity.getEyeHeight() - 0.35, position.z - 0.5,
+                position.x + 0.5,
+                position.y + entity.getEyeHeight() + 0.65, position.z + 0.5);
         if (FarmHelperConfig.pestsESP) {
             Color color = FarmHelperConfig.pestsESPColor.toJavaColor();
-            Vec3 entityPos = new Vec3(entity.getX(), entity.getY() + entity.getEyeHeight(), entity.getZ());
-            double distance = mc.player.getEyePosition(1).distanceTo(entityPos);
+            Vec3 entityPos = new Vec3(position.x, position.y + entity.getEyeHeight(), position.z);
+            double distance = mc.player.getEyePosition(partialTicks).distanceTo(entityPos);
             boolean isInVacuumRange = distance < currentVacuumRange;
             if (isInVacuumRange) {
                 color = new Color(color.getRed(), 255, color.getBlue(), Math.min(50, color.getAlpha()));
@@ -1370,15 +1353,15 @@ public class PestsDestroyer implements IFeature {
                     ItemStack itemStack = ((ArmorStand) entity).getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
                     String texture = InventoryUtils.skullTexture(itemStack);
                     String pestName = this.pests.stream().filter(pest -> texture.equals(pest.getRight())).findFirst().get().getLeft();
-                    RenderUtils.drawText(pestName + String.format(distanceColor + " %.1fm", distance), entity.getX(),
-                            entity.getY() + entity.getEyeHeight() + 0.65 + 0.5, entity.getZ(), (float) (1 + Math.min((distance / 20f), 2f)));
+                    RenderUtils.drawText(pestName + String.format(distanceColor + " %.1fm", distance), position.x,
+                            position.y + entity.getEyeHeight() + 0.65 + 0.5, position.z, (float) (1 + Math.min((distance / 20f), 2f)));
                 } catch (Exception ignored) {
                 }
             }
             RenderUtils.drawBox(boundingBox, color);
         }
         if (FarmHelperConfig.pestsTracers) {
-            RenderUtils.drawTracer(new Vec3(entity.getX(), entity.getY() + entity.getEyeHeight(), entity.getZ()),
+            RenderUtils.drawTracer(new Vec3(position.x, position.y + entity.getEyeHeight(), position.z),
                     FarmHelperConfig.pestsTracersColor.toJavaColor());
         }
     }
@@ -1591,8 +1574,8 @@ public class PestsDestroyer implements IFeature {
                 if (slot == null || !slot.hasItem()) {
                     continue;
                 }
-                if (slot.getItem().getDisplayName().getString().contains("Plot")) {
-                    String displayName = ChatFormatting.stripFormatting(slot.getItem().getDisplayName().getString());
+                if (slot.getItem().getHoverName().getString().contains("Plot")) {
+                    String displayName = ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString());
                     try {
                         String plotName = displayName.replace("Plot - ", "").trim();
                         int plotNumber = PlotUtils.getPLOT_NUMBERS().get(plotCounter);
@@ -1601,7 +1584,7 @@ public class PestsDestroyer implements IFeature {
                         LogUtils.sendError("[Pests Destroyer] Failed to parse plot number: " + displayName);
                     }
                     plotCounter++;
-                } else if (ChatFormatting.stripFormatting(slot.getItem().getDisplayName().getString()).equals("The Barn")) {
+                } else if (ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString()).equals("The Barn")) {
                     plotCounter++;
                 }
             }
@@ -1645,9 +1628,9 @@ public class PestsDestroyer implements IFeature {
             KeyBindUtils.holdThese(mc.options.keyJump);
             return;
         }
-        if (mc.player.getDeltaMovement().y < -0.0784000015258789 || BlockUtils.getRelativeBlock(0, 0, 0).defaultBlockState().liquid()) {
+        if ((!mc.player.onGround() && mc.player.getDeltaMovement().y < -0.003) || mc.player.isInWater() || mc.player.isInLava()) {
             if (flyDelay.passed()) {
-                if (!mc.player.getAbilities().flying) {
+                if (mc.player.getAbilities().mayfly && !mc.player.getAbilities().flying) {
                     mc.player.getAbilities().flying = true;
                     mc.player.onUpdateAbilities();
                 }

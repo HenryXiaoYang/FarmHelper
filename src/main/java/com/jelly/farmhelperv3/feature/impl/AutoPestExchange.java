@@ -464,14 +464,14 @@ public class AutoPestExchange implements IFeature {
     @SubscribeEvent(receiveCanceled = true)
     public void onChatMessageReceived(ClientChatReceivedEvent event) {
         if (enabled && event.type == 0 && event.message != null && newState == NewState.WAIT_FOR_VACUUM) {
-            if (event.message.getString().contains("§e[NPC] §6Phillip§f: Thanks for the §2ൠ Pests§f,"))
+            if (net.minecraft.ChatFormatting.stripFormatting(event.message.getString()).contains("[NPC] Phillip: Thanks for the ൠ Pests,"))
                 LogUtils.sendSuccess("[Auto Pest Exchange] Successfully emptied the vacuum!");
             else {
-                if (event.message.getString().startsWith("You've exchanged enough Pests recently! Try emptying your Vacuum Bag later!")) {
+                if (net.minecraft.ChatFormatting.stripFormatting(event.message.getString()).startsWith("You've exchanged enough Pests recently! Try emptying your Vacuum Bag later!")) {
                     LogUtils.sendDebug("[Auto Pest Exchange] Already emptied the vacuum.");
                 }
                 for (String message : dialogueMessages) {
-                    if (event.message.getString().contains("§e[NPC] §6Phillip§f: " + message)) {
+                    if (net.minecraft.ChatFormatting.stripFormatting(event.message.getString()).contains("[NPC] Phillip: " + message)) {
                         LogUtils.sendError("[Auto Pest Exchange] You haven't unlocked Phillip yet!");
                         break;
                     }

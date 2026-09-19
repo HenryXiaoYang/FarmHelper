@@ -495,7 +495,7 @@ public class AutoSell implements IFeature {
                         for (Slot slot : chest.slots) {
                             if (slot == null || !slot.hasItem() || slot.index < inv.getContainerSize())
                                 continue;
-                            String name = ChatFormatting.stripFormatting(slot.getItem().getDisplayName().getString());
+                            String name = ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString());
                             if (!shouldSell(name)) continue;
                             LogUtils.sendDebug("[Auto Sell] Selling " + name);
                             InventoryUtils.clickSlotWithId(slot.index, InventoryUtils.ClickType.LEFT, InventoryUtils.ClickMode.PICKUP, chest.containerId);
@@ -569,7 +569,7 @@ public class AutoSell implements IFeature {
             if (i > 38) break;
             ItemStack itemStack = mc.player.getInventory().getItem(i);
             if ((itemStack == null || itemStack.isEmpty())) continue;
-            String name = ChatFormatting.stripFormatting(itemStack.getDisplayName().getString());
+            String name = ChatFormatting.stripFormatting(itemStack.getHoverName().getString());
             if (itemStack.has(net.minecraft.core.component.DataComponents.TOOL)) continue;
             if (itemStack.has(net.minecraft.core.component.DataComponents.EQUIPPABLE)) continue;
             if (name.equals("Basket of Seeds")) continue;
@@ -584,7 +584,7 @@ public class AutoSell implements IFeature {
     private boolean hasShitItemsInInventory() {
         for (int i = 9; i < 45; i++) {
             if (mc.player.inventoryMenu.getSlot(i).hasItem()) {
-                String name = mc.player.inventoryMenu.getSlot(i).getItem().getDisplayName().getString();
+                String name = mc.player.inventoryMenu.getSlot(i).getItem().getHoverName().getString();
                 if (shouldSellCustomItem(name)) {
                     return true;
                 }

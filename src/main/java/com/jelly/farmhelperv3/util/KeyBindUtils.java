@@ -57,6 +57,7 @@ public class KeyBindUtils {
 
     private static void realSetKeyBindState(KeyMapping key, boolean pressed) {
         if (key == null) return;
+        if (mc.screen != null) pressed = false;
         if (pressed) {
             if (!key.isDown()) {
                 KeyMapping.click(boundKey(key));

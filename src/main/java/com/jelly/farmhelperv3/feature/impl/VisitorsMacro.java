@@ -292,7 +292,7 @@ public class VisitorsMacro implements IFeature {
         if (mc.player == null || mc.level == null) return;
         if (event.phase != TickEvent.Phase.END) return;
 
-        List<String> tabList = TablistUtils.getTabList();
+        List<String> tabList = TablistUtils.getFormattedTabList();
         if (tabList.size() < 2) return;
         boolean foundVisitors = false;
         ArrayList<String> newVisitors = new ArrayList<>();
@@ -474,7 +474,7 @@ public class VisitorsMacro implements IFeature {
                 compactors.clear();
                 for (int i = 0; i < 9; i++) {
                     ItemStack itemStack = mc.player.getInventory().getItem(i);
-                    if ((itemStack != null && !itemStack.isEmpty()) && itemStack.getDisplayName().getString().contains("Compactor")) {
+                    if ((itemStack != null && !itemStack.isEmpty()) && itemStack.getHoverName().getString().contains("Compactor")) {
                         compactors.add(i);
                     }
                 }
@@ -545,7 +545,7 @@ public class VisitorsMacro implements IFeature {
                     break;
                 }
                 ItemStack currentItem = mc.player.getMainHandItem();
-                if ((currentItem == null || currentItem.isEmpty()) || !currentItem.getDisplayName().getString().contains("Compactor")) {
+                if ((currentItem == null || currentItem.isEmpty()) || !currentItem.getHoverName().getString().contains("Compactor")) {
                     LogUtils.sendDebug("[Visitors Macro] Not holding compactor, holding compactor again...");
                     setCompactorState(CompactorState.GET_LIST);
                     delayClock.schedule(FarmHelperConfig.getRandomGUIMacroDelay());
@@ -570,23 +570,23 @@ public class VisitorsMacro implements IFeature {
                 ItemStack itemStack = slotObject.getItem();
                 if ((itemStack == null || itemStack.isEmpty())) break;
                 if (!InventoryUtils.isInventoryLoaded()) break;
-                if (itemStack.getDisplayName().getString().contains("OFF") && !compactorsDisabled) {
+                if (itemStack.getHoverName().getString().contains("OFF") && !compactorsDisabled) {
                     LogUtils.sendDebug("[Visitors Macro] Compactor is OFF");
                     compactors.remove(0);
                     setCompactorState(CompactorState.CLOSE_COMPACTOR);
                     delayClock.schedule(FarmHelperConfig.getRandomGUIMacroDelay());
-                } else if (!compactorsDisabled && itemStack.getDisplayName().getString().contains("ON")) {
+                } else if (!compactorsDisabled && itemStack.getHoverName().getString().contains("ON")) {
                     if (clickedInCompactor) break;
                     LogUtils.sendDebug("[Visitors Macro] Disabling compactor in slot " + slot);
                     InventoryUtils.clickContainerSlot(slot, InventoryUtils.ClickType.LEFT, InventoryUtils.ClickMode.PICKUP);
                     clickedInCompactor = true;
                 }
-                if (itemStack.getDisplayName().getString().contains("ON") && compactorsDisabled) {
+                if (itemStack.getHoverName().getString().contains("ON") && compactorsDisabled) {
                     LogUtils.sendDebug("[Visitors Macro] Compactor is ON");
                     compactors.remove(0);
                     setCompactorState(CompactorState.CLOSE_COMPACTOR);
                     delayClock.schedule(FarmHelperConfig.getRandomGUIMacroDelay());
-                } else if (compactorsDisabled && itemStack.getDisplayName().getString().contains("OFF")) {
+                } else if (compactorsDisabled && itemStack.getHoverName().getString().contains("OFF")) {
                     if (clickedInCompactor) break;
                     LogUtils.sendDebug("[Visitors Macro] Enabling compactor in slot " + slot);
                     InventoryUtils.clickContainerSlot(slot, InventoryUtils.ClickType.LEFT, InventoryUtils.ClickMode.PICKUP);
@@ -799,7 +799,7 @@ public class VisitorsMacro implements IFeature {
                 haveItemsInSack = false;
                 itemsToBuy.clear();
                 currentRewards.clear();
-                String npcName = isNpc ? ChatFormatting.stripFormatting(npcSlot.getItem().getDisplayName().getString()) : "";
+                String npcName = isNpc ? ChatFormatting.stripFormatting(npcSlot.getItem().getHoverName().getString()) : "";
                 if (npcName.isEmpty()) {
                     LogUtils.sendError("[Visitors Macro] Opened wrong NPC.");
                     setVisitorsState(VisitorsState.GET_CLOSE_TO_VISITOR);
@@ -807,7 +807,7 @@ public class VisitorsMacro implements IFeature {
                     delayClock.schedule(getRandomDelay());
                     break;
                 }
-                Rarity npcRarity = Rarity.getRarityFromNpcName(npcSlot.getItem().getDisplayName().getString());
+                Rarity npcRarity = Rarity.getRarityFromNpcName(com.jelly.farmhelperv3.util.TextUtils.formatted(npcSlot.getItem().getHoverName()));
                 LogUtils.sendDebug("[Visitors Macro] Opened NPC: " + npcName + " Rarity: " + npcRarity);
 
                 Slot acceptOfferSlot = InventoryUtils.getSlotOfItemInContainer("Accept Offer");
@@ -1201,7 +1201,7 @@ public class VisitorsMacro implements IFeature {
     private Stream<Entity> getVisitors() {
         return java.util.stream.StreamSupport.stream(mc.level.entitiesForRendering().spliterator(), false)
                 .filter(e -> e instanceof ArmorStand)
-                .filter(e -> e.hasCustomName() && e.getName().getString().startsWith("§"))
+                .filter(e -> e.hasCustomName())
                 .filter(e -> !servedCustomers.contains(e))
                 .filter(entity2 -> entity2.hasCustomName() && visitors.stream().anyMatch(v -> equalsWithoutFormatting(v, entity2.getName().getString())))
                 .filter(entity2 -> !ignoredNPCs.contains(entity2));
@@ -1268,7 +1268,7 @@ public class VisitorsMacro implements IFeature {
         if (!InventoryUtils.isInventoryLoaded()) return;
         LogUtils.sendDebug("[Visitors Macro] Rejecting the visitor");
         Slot rejectOfferSlot = InventoryUtils.getSlotOfItemInContainer("Refuse Offer");
-        if (rejectOfferSlot == null || rejectOfferSlot.getItem() == null) {
+        if (rejectOfferSlot == null || !rejectOfferSlot.hasItem()) {
             LogUtils.sendError("[Visitors Macro] Couldn't find the \"Reject Offer\" slot!");
             delayClock.schedule(getRandomDelay());
             return;
@@ -1482,7 +1482,7 @@ public class VisitorsMacro implements IFeature {
         SPECIAL;
 
         public static Rarity getRarityFromNpcName(String npcName) {
-            npcName = npcName.replace("§f", "");
+            npcName = npcName.replaceAll("§[fklmnor]", "").trim();
             if (npcName.startsWith("§a")) {
                 return UNCOMMON;
             } else if (npcName.startsWith("§9")) {

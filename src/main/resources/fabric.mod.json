@@ -5,14 +5,13 @@
   "name": "FarmHelper V3",
   "description": "FarmHelper for Minecraft 26.1.2. Adapted from JellyLab's FarmHelper V2.",
   "authors": [
-    "JellyLabScripts",
-    "FarmHelper contributors"
+    "HenryXiaoYang"
   ],
   "license": "CC-BY-NC-SA-4.0",
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.jelly.farmhelperv3.FarmHelper"
+      "com.jelly.farmhelperv3.FarmHelperClient"
     ],
     "modmenu": [
       "com.jelly.farmhelperv3.config.ModMenuIntegration"

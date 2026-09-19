@@ -47,25 +47,27 @@ import java.util.List;
 public class FarmHelperConfig extends NativeConfig {
 
     private transient static final Minecraft mc = Minecraft.getInstance();
-    private transient static final String GENERAL = "General";
-    private transient static final String MISCELLANEOUS = "Miscellaneous";
-    private transient static final String FAILSAFE = "Failsafe";
-    private transient static final String SCHEDULER = "Scheduler";
-    private transient static final String JACOBS_CONTEST = "Jacob's Contest";
-    private transient static final String VISITORS_MACRO = "Visitors Macro";
-    private transient static final String PESTS_DESTROYER = "Pests Destroyer";
-    private transient static final String PEST_FARMER = "Pest Farmer";
-    private transient static final String AUTO_PEST_EXCHANGE = "Auto Pest Exchange";
-    private transient static final String AUTO_GOD_POT = "Auto God Pot";
-    private transient static final String AUTO_SELL = "Auto Sell";
-    private transient static final String AUTO_REPELLENT = "Auto Repellent";
-    private transient static final String AUTO_SPRAYONATOR = "Auto Sprayonator";
-    private transient static final String AUTO_COMPOSTER = "Auto Composter";
-    private transient static final String DISCORD_INTEGRATION = "Discord Integration";
-    private transient static final String DELAYS = "Delays";
-    private transient static final String HUD = "HUD";
+    private transient static final String GENERAL = "Farming";
+    private transient static final String MISCELLANEOUS = "Controls";
+    private transient static final String FAILSAFE = "Failsafes";
+    private transient static final String SCHEDULER = "Scheduler & Contests";
+    private transient static final String JACOBS_CONTEST = "Scheduler & Contests";
+    private transient static final String VISITORS_MACRO = "Visitors";
+    private transient static final String PESTS_DESTROYER = "Pests";
+    private transient static final String PEST_FARMER = "Pests";
+    private transient static final String AUTO_PEST_EXCHANGE = "Pests";
+    private transient static final String AUTO_GOD_POT = "Automation";
+    private transient static final String AUTO_SELL = "Automation";
+    private transient static final String AUTO_REPELLENT = "Automation";
+    private transient static final String AUTO_SPRAYONATOR = "Automation";
+    private transient static final String AUTO_COMPOSTER = "Automation";
+    private transient static final String DISCORD_INTEGRATION = "Integrations";
+    private transient static final String DELAYS = "Advanced";
+    private transient static final String HUD = "HUD & Overlays";
+    private transient static final String PERFORMANCE = "Performance";
+    private transient static final String PRIVACY = "Privacy";
     private transient static final String DEBUG = "Debug";
-    private transient static final String EXPERIMENTAL = "Experimental";
+    private transient static final String EXPERIMENTAL = "Advanced";
 
     private transient static final File configRewarpFile = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("farmhelperv3/rewarp.json").toFile();
 
@@ -81,15 +83,16 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="GENERAL">
-    @Setting(kind = Setting.Kind.INFO,
+    @Setting(order = 20, kind = Setting.Kind.INFO,
             text = "DO NOT lock slot 7 in the hotbar if you're using any gui related features, such as Auto God Pot, Auto Cookie, Auto Repellent",
             category = GENERAL,
             type = "WARNING",
-            size = 2
+            size = 2,
+            subcategory = "Requirements"
     )
     public static boolean guiInfo;
 
-    @Setting(kind = Setting.Kind.DROPDOWN,
+    @Setting(order = 0, kind = Setting.Kind.DROPDOWN,
             name = "Macro Type", category = GENERAL,
             description = "Farm Types",
             options = {
@@ -107,26 +110,30 @@ public class FarmHelperConfig extends NativeConfig {
                     "S Shape - Mushroom (30° with rotations)", // 11
                     "S Shape - Mushroom SDS", // 12
                     "Circle - Crops (Wheat, Carrot, Potato, NW)" // 13
-            }, size = 2
+            }, size = 2,
+            subcategory = "Farming"
     )
     public static int macroType = 0;
 
     @Setting(kind = Setting.Kind.SWITCH,
             name = "Always hold W while farming", category = GENERAL,
             description = "Always hold W while farming",
-            size = 1
+            size = 1,
+            subcategory = "Farming"
     )
     public static boolean alwaysHoldW = false;
 
     @Setting(kind = Setting.Kind.SWITCH,
             name = "Use Custom Farming Speed", category = GENERAL,
-            description = "Enable auto ranchers boots speed changer when farming"
+            description = "Enable auto ranchers boots speed changer when farming",
+            subcategory = "Farming"
     )
     public static boolean customFarmingSpeed = false;
     @Setting(kind = Setting.Kind.NUMBER,
             name = "Custom Farming Speed", category = GENERAL,
             description = "Set a Custom Farming Speed for Ranchers Boots",
-            min = 1, max = 400
+            min = 1, max = 400,
+            subcategory = "Farming"
     )
     public static int farmingSpeed = 400;
 
@@ -173,8 +180,8 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="Rewarp">
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Highlight rewarp points", category = GENERAL, subcategory = "Rewarp",
+    @Setting(order = 40, kind = Setting.Kind.SWITCH,
+            name = "Highlight rewarp points", category = HUD, subcategory = "Rewarp Markers",
             description = "Highlights all rewarp points you have added",
             size = 1
     )
@@ -249,13 +256,13 @@ public class FarmHelperConfig extends NativeConfig {
     )
     public static int spawnPlot = 0;
 
-    @Setting(kind = Setting.Kind.BUTTON,
+    @Setting(order = 0, kind = Setting.Kind.BUTTON,
             name = "Set SpawnPos", category = GENERAL, subcategory = "Spawn Position",
             description = "Sets the spawn position to your current position",
             text = "Set SpawnPos"
     )
     Runnable _setSpawnPos = PlayerUtils::setSpawnLocation;
-    @Setting(kind = Setting.Kind.BUTTON,
+    @Setting(order = 10, kind = Setting.Kind.BUTTON,
             name = "Reset SpawnPos", category = GENERAL, subcategory = "Spawn Position",
             description = "Resets the spawn position",
             text = "Reset SpawnPos"
@@ -268,8 +275,8 @@ public class FarmHelperConfig extends NativeConfig {
         LogUtils.sendSuccess("Spawn position has been reset!");
     };
 
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Draw spawn location", category = GENERAL, subcategory = "Drawings",
+    @Setting(order = 50, kind = Setting.Kind.SWITCH,
+            name = "Draw spawn location", category = HUD, subcategory = "Spawn Marker",
             description = "Draws the spawn location"
     )
     public static boolean drawSpawnLocation = true;
@@ -279,18 +286,18 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="MISC">
     //<editor-fold desc="Keybinds">
-    @Setting(kind = Setting.Kind.KEYBIND,
+    @Setting(order = 0, kind = Setting.Kind.KEYBIND,
             name = "Toggle Farm Helper", category = MISCELLANEOUS, subcategory = "Keybinds",
             description = "Toggles the macro on/off", size = 2
     )
     public static ConfigKey toggleMacro = new ConfigKey(GLFW.GLFW_KEY_GRAVE_ACCENT);
-    @Setting(kind = Setting.Kind.KEYBIND,
+    @Setting(order = 10, kind = Setting.Kind.KEYBIND,
             name = "Open GUI", category = MISCELLANEOUS, subcategory = "Keybinds",
             description = "Opens Farm Helper configuration menu", size = 2
     )
 
     public static ConfigKey openGuiKeybind = new ConfigKey(GLFW.GLFW_KEY_F);
-    @Setting(kind = Setting.Kind.KEYBIND,
+    @Setting(order = 20, kind = Setting.Kind.KEYBIND,
             name = "Freelook", category = MISCELLANEOUS, subcategory = "Keybinds",
             description = "Locks rotation, lets you freely look", size = 2
     )
@@ -300,7 +307,7 @@ public class FarmHelperConfig extends NativeConfig {
             category = MISCELLANEOUS, subcategory = "Keybinds"
     )
     private int freelookWarning;
-    @Setting(kind = Setting.Kind.KEYBIND,
+    @Setting(order = 30, kind = Setting.Kind.KEYBIND,
             name = "Cancel failsafe", category = MISCELLANEOUS, subcategory = "Keybinds",
             description = "Cancels failsafe and continues macroing", size = 2
     )
@@ -315,12 +322,12 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="Plot Cleaning Helper">
     @Setting(kind = Setting.Kind.KEYBIND,
-            name = "Plot Cleaning Helper", category = MISCELLANEOUS, subcategory = "Plot Cleaning Helper",
+            name = "Plot Cleaning Helper", category = AUTO_COMPOSTER, subcategory = "Plot Cleaning",
             description = "Toggles the plot cleaning helper on/off", size = 2
     )
     public static ConfigKey plotCleaningHelperKeybind = new ConfigKey(GLFW.GLFW_KEY_P);
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Automatically choose a tool to destroy the block", category = MISCELLANEOUS, subcategory = "Plot Cleaning Helper",
+            name = "Automatically choose a tool to destroy the block", category = AUTO_COMPOSTER, subcategory = "Plot Cleaning",
             description = "Automatically chooses the best tool to destroy the block"
     )
     public static boolean autoChooseTool = false;
@@ -328,7 +335,7 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="Miscellaneous">
     @Setting(kind = Setting.Kind.DUALOPTION,
-            name = "AutoUpdater Version Type", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+            name = "AutoUpdater Version Type", category = EXPERIMENTAL, subcategory = "Updates",
             description = "The version type to use",
             left = "Release",
             right = "Pre-release"
@@ -336,7 +343,7 @@ public class FarmHelperConfig extends NativeConfig {
     public static boolean autoUpdaterDownloadBetaVersions = false;
 
     @Setting(kind = Setting.Kind.BUTTON,
-            name = "Check for update", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+            name = "Check for update", category = EXPERIMENTAL, subcategory = "Updates",
             description = "Checks for updates",
             text = "Check for update"
     )
@@ -345,46 +352,46 @@ public class FarmHelperConfig extends NativeConfig {
     };
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Mute The Game", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+            name = "Mute The Game", category = MISCELLANEOUS, subcategory = "Mouse and Sound",
             description = "Mutes the game while farming"
     )
     public static boolean muteTheGame = false;
 
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Change window's title", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+    @Setting(order = 60, kind = Setting.Kind.SWITCH,
+            name = "Change window's title", category = HUD, subcategory = "Window",
             description = "Changes the window's title"
     )
     public static boolean changeWindowTitle = true;
 
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Auto Cookie", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
+            name = "Auto Cookie", category = AUTO_GOD_POT, subcategory = "Booster Cookie",
             description = "Automatically purchases and consumes a booster cookie"
     )
     public static boolean autoCookie = false;
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Hold left click when changing row", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+            name = "Hold left click when changing row", category = GENERAL, subcategory = "Farming",
             description = "Hold left click when change row"
     )
     public static boolean holdLeftClickWhenChangingRow = true;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Auto Ungrab Mouse", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+            name = "Auto Ungrab Mouse", category = MISCELLANEOUS, subcategory = "Mouse and Sound",
             description = "Automatically ungrabs your mouse, so you can safely alt-tab"
     )
     public static boolean autoUngrabMouse = true;
 
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "PiP Mode", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+    @Setting(order = 61, kind = Setting.Kind.SWITCH,
+            name = "PiP Mode", category = HUD, subcategory = "Window",
             description = "Enables Picture-in-Picture mode, hold middle mouse while macroing to move the game window"
     )
     public static boolean pipMode = false;
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Anti Stuck Enabled (Disabled by default for now)", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+            name = "Anti Stuck Enabled (Disabled by default for now)", category = FAILSAFE, subcategory = "Stuck Recovery",
             description = "Enables the anti stuck feature"
     )
     public static boolean tmpAntiStuckEnabled = false;
     @Setting(kind = Setting.Kind.SLIDER,
-            name = "Anti Stuck Tries Until Rewarp", category = MISCELLANEOUS, subcategory = "Miscellaneous",
+            name = "Anti Stuck Tries Until Rewarp", category = FAILSAFE, subcategory = "Stuck Recovery",
             description = "The number of tries until rewarp",
             min = 3, max = 10
     )
@@ -392,19 +399,19 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="Performance Mod">
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Performance Mode", category = MISCELLANEOUS, subcategory = "Performance Mode",
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
+            name = "Performance Mode", category = PERFORMANCE, subcategory = "Rendering and FPS",
             description = "Set render distance to 2, set max fps to 15 and doesn't render crops"
     )
     public static boolean performanceMode = false;
 
-    @Setting(kind = Setting.Kind.SWITCH, name = "Fast Render", category = MISCELLANEOUS, subcategory = "Performance Mode",
+    @Setting(kind = Setting.Kind.SWITCH, name = "Fast Render", category = PERFORMANCE, subcategory = "Rendering and FPS",
             description = "Using new fast render method to increase performance"
     )
     public static boolean fastRender = true;
 
     @Setting(kind = Setting.Kind.NUMBER,
-            name = "Max FPS", category = MISCELLANEOUS, subcategory = "Performance Mode",
+            name = "Max FPS", category = PERFORMANCE, subcategory = "Rendering and FPS",
             description = "The maximum FPS to set when performance mode is enabled",
             min = 10, max = 60
     )
@@ -413,39 +420,39 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="Crop Utils">
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Increase Cocoa Hitboxes", category = MISCELLANEOUS, subcategory = "Crop Utils",
+            name = "Increase Cocoa Hitboxes", category = GENERAL, subcategory = "Crop Hitboxes",
             description = "Allows you to farm cocoa beans more efficiently at higher speeds by making the hitboxes bigger"
     )
     public static boolean increasedCocoaBeans = true;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Increase Crop Hitboxes", category = MISCELLANEOUS, subcategory = "Crop Utils",
+            name = "Increase Crop Hitboxes", category = GENERAL, subcategory = "Crop Hitboxes",
             description = "Allows you to farm crops more efficient by making the hitboxes bigger"
     )
     public static boolean increasedCrops = true;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Increase Nether Wart Hitboxes", category = MISCELLANEOUS, subcategory = "Crop Utils",
+            name = "Increase Nether Wart Hitboxes", category = GENERAL, subcategory = "Crop Hitboxes",
             description = "Allows you to farm nether warts more efficiently at higher speeds by making the hitboxes bigger"
     )
     public static boolean increasedNetherWarts = true;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Increase Mushroom Hitboxes", category = MISCELLANEOUS, subcategory = "Crop Utils",
+            name = "Increase Mushroom Hitboxes", category = GENERAL, subcategory = "Crop Hitboxes",
             description = "Allows you to farm mushrooms more efficiently at higher speeds by making the hitboxes bigger"
     )
     public static boolean increasedMushrooms = true;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Pingless Cactus", category = MISCELLANEOUS, subcategory = "Crop Utils",
+            name = "Pingless Cactus", category = GENERAL, subcategory = "Crop Hitboxes",
             description = "Allows you to farm cactus more efficiently at higher speeds by making the cactus pingless"
     )
     public static boolean pinglessCactus = true;
     //</editor-fold>
 
     //<editor-fold desc="Analytics">
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Send analytic data", category = MISCELLANEOUS, subcategory = "Analytics",
+    @Setting(order = 10, kind = Setting.Kind.SWITCH,
+            name = "Send analytic data", category = PRIVACY, subcategory = "Analytics",
             description = "Sends analytic data to the server to improve the macro and learn how to detect staff checks"
     )
     public static boolean sendAnalyticData = true;
@@ -878,7 +885,7 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="SCHEDULER">
     //<editor-fold desc="Scheduler">
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Enable Scheduler", category = SCHEDULER, subcategory = "Scheduler", size = 1,
             description = "Farms for X amount of minutes then takes a break for X amount of minutes"
     )
@@ -1066,7 +1073,7 @@ public class FarmHelperConfig extends NativeConfig {
             text = "Visitors Macro tends to move your mouse because of opening GUIs frequently. Be aware of that.",
             type = "WARNING",
             category = VISITORS_MACRO,
-            subcategory = "Visitors Macro",
+            subcategory = "Visitor Trading",
             size = 2
     )
     public static boolean visitorsMacroWarning2;
@@ -1075,34 +1082,34 @@ public class FarmHelperConfig extends NativeConfig {
             text = "Cookie buff is required!",
             type = "ERROR",
             category = VISITORS_MACRO,
-            subcategory = "Visitors Macro"
+            subcategory = "Visitor Trading"
     )
     public static boolean infoCookieBuffRequired;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Enable visitors macro", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "Enable visitors macro", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "Enables visitors macro"
     )
     public static boolean visitorsMacro = false;
     @Setting(kind = Setting.Kind.SLIDER,
-            name = "Minimum Visitors to start the macro", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "Minimum Visitors to start the macro", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "The minimum amount of visitors to start the macro",
             min = 1, max = 5
     )
     public static int visitorsMacroMinVisitors = 5;
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Autosell before serving visitors", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "Autosell before serving visitors", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "Automatically sells crops before serving visitors"
     )
     public static boolean visitorsMacroAutosellBeforeServing = false;
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Pause the visitors macro during Jacob's contests", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "Pause the visitors macro during Jacob's contests", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "Pauses the visitors macro during Jacob's contests"
     )
     public static boolean pauseVisitorsMacroDuringJacobsContest = true;
 
     @Setting(kind = Setting.Kind.SLIDER,
-            name = "The minimum amount of coins to start the macro (in thousands)", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "The minimum amount of coins to start the macro (in thousands)", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "The minimum amount of coins you need to have in your purse to start the visitors macro",
             min = 1_000, max = 20_000
     )
@@ -1111,21 +1118,21 @@ public class FarmHelperConfig extends NativeConfig {
             text = "If you put your compactors in the hotbar, they will be temporarily disabled.",
             type = "WARNING",
             category = VISITORS_MACRO,
-            subcategory = "Visitors Macro",
+            subcategory = "Visitor Trading",
             size = 2
     )
     public static boolean infoCompactors;
 
     @Setting(kind = Setting.Kind.SLIDER,
-            name = "Max Spend Limit (in Millions Per Purchase)", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "Max Spend Limit (in Millions Per Purchase)", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             min = 0.2f, max = 7.5f
     )
     public static float visitorsMacroMaxSpendLimit = 0.7f;
 
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 20, kind = Setting.Kind.SWITCH,
             name = "Visitors Macro Afk Infinite mode",
             description = "Will turn on Visitors Macro automatically when you are not farming and in the barn. Click macro toggle button to disable this option",
-            category = VISITORS_MACRO, subcategory = "Visitors Macro"
+            category = VISITORS_MACRO, subcategory = "Visitor Trading"
     )
     public static boolean visitorsMacroAfkInfiniteMode = false;
 
@@ -1133,20 +1140,20 @@ public class FarmHelperConfig extends NativeConfig {
             text = "If you have any issues, try switching the travel method.",
             type = "INFO",
             category = VISITORS_MACRO,
-            subcategory = "Visitors Macro",
+            subcategory = "Visitor Trading",
             size = 2
     )
     public static boolean visitorsExchangeTravelMethodInfo;
     @Setting(kind = Setting.Kind.DUALOPTION,
-            name = "Travel method", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "Travel method", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "The travel method to use to get to the visitor stand",
             left = "Fly",
             right = "Walk"
     )
     public static boolean visitorsExchangeTravelMethod = false;
 
-    @Setting(kind = Setting.Kind.BUTTON,
-            name = "Start the macro manually", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+    @Setting(order = 10, kind = Setting.Kind.BUTTON,
+            name = "Start the macro manually", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "Triggers the visitors macro",
             text = "Trigger now"
     )
@@ -1160,7 +1167,7 @@ public class FarmHelperConfig extends NativeConfig {
     };
 
     @Setting(kind = Setting.Kind.DUALOPTION,
-            name = "Visitors Filtering Method", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "Visitors Filtering Method", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "",
             left = "By Rarity", right = "By Name"
     )
@@ -1168,7 +1175,7 @@ public class FarmHelperConfig extends NativeConfig {
     public static boolean visitorsFilteringMethod = false;
 
     @Setting(kind = Setting.Kind.DUALOPTION,
-            name = "Full Inventory Action", category = VISITORS_MACRO, subcategory = "Visitors Macro",
+            name = "Full Inventory Action", category = VISITORS_MACRO, subcategory = "Visitor Trading",
             description = "The action to take when the items don't fit in your inventory",
             left = "Reject", right = "Ignore"
     )
@@ -1262,112 +1269,114 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="PESTS DESTROYER">
     //<editor-fold desc="Infos">
-    @Setting(kind = Setting.Kind.INFO,
+    @Setting(order = 60, kind = Setting.Kind.INFO,
             text = "Make sure to disable SkyHanni Hide Particles, it is enabled by default!",
             type = "WARNING",
             category = PESTS_DESTROYER,
-            size = 2
+            size = 2,
+            subcategory = "Requirements"
     )
     public static boolean pestsDestroyerWarning1;
-    @Setting(kind = Setting.Kind.INFO,
+    @Setting(order = 60, kind = Setting.Kind.INFO,
             text = "Make sure to enable Hypixel's Particles (/pq low), low is the minimum to make it work",
             type = "WARNING",
             category = PESTS_DESTROYER,
-            size = 2
+            size = 2,
+            subcategory = "Requirements"
     )
     public static boolean pestsDestroyerWarning2;
-    @Setting(kind = Setting.Kind.INFO,
+    @Setting(order = 60, kind = Setting.Kind.INFO,
             text = "Make sure to disable Oringo AutoSprint. Keep in mind Oringo breaks Farm Helper a lot.",
             type = "WARNING",
             category = PESTS_DESTROYER,
-            size = 2
+            size = 2,
+            subcategory = "Requirements"
     )
     public static boolean pestsDestroyerWarning3;
 
-    @Setting(kind = Setting.Kind.INFO,
-            text = "Pests Destroyer will trigger only at rewarp or spawn location after reaching the threshold!",
+    @Setting(order = 60, kind = Setting.Kind.INFO,
+            text = "Requires the Garden, flight, a vacuum in the hotbar and the Pests Tab widget. Farming mode starts at rewarp/spawn after reaching the threshold; idle AFK mode starts at one pest.",
             type = "INFO",
             category = PESTS_DESTROYER,
-            size = 2
+            size = 2,
+            subcategory = "Requirements"
     )
     public static boolean pestsDestroyerInfo;
     //</editor-fold>
 
     //<editor-fold desc="Pests Destroyer Main">
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Enable Pests Destroyer", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
-            description = "Destroys pests"
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
+            name = "Enable Pests Destroyer", category = PESTS_DESTROYER, subcategory = "Pest Clearing",
+            description = "Allows pest clearing. Choose farming or idle behavior below, or use Trigger now."
     )
     public static boolean enablePestsDestroyer = false;
-    @Setting(kind = Setting.Kind.SLIDER,
-            name = "Start killing pests at X pests", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
+    @Setting(order = 40, kind = Setting.Kind.SLIDER,
+            name = "Start killing pests at X pests", category = PESTS_DESTROYER, subcategory = "Pest Clearing",
             description = "The amount of pests to start killing pests",
             min = 1, max = 8
     )
     public static int startKillingPestsAt = 3;
     @Setting(kind = Setting.Kind.SLIDER,
-            name = "Additional GUI Delay (ms)", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
+            name = "Additional GUI Delay (ms)", category = PESTS_DESTROYER, subcategory = "Pest Travel",
             description = "Extra time to wait between clicks. By default it's 500-1000 ms.",
             min = 0, max = 5000
     )
     public static int pestAdditionalGUIDelay = 0;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Sprint while flying", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
+            name = "Sprint while flying", category = PESTS_DESTROYER, subcategory = "Pest Travel",
             description = "Sprints while flying"
     )
     public static boolean sprintWhileFlying = false;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Use AOTE/V in Pests Destroyer", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
+            name = "Use AOTE/V in Pests Destroyer", category = PESTS_DESTROYER, subcategory = "Pest Travel",
             description = "Uses AOTE/V in Pests Destroyer"
     )
     public static boolean useAoteVInPestsDestroyer = false;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Don't teleport to plots when the spawn is not obstructed", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
+            name = "Don't teleport to plots when the spawn is not obstructed", category = PESTS_DESTROYER, subcategory = "Pest Travel",
             description = "Prevents the macro from teleporting to plots"
     )
     public static boolean dontTeleportToPlots = false;
 
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Pause the Pests Destroyer during Jacob's contests", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
+    @Setting(order = 50, kind = Setting.Kind.SWITCH,
+            name = "Pause the Pests Destroyer during Jacob's contests", category = PESTS_DESTROYER, subcategory = "Pest Clearing",
             description = "Pauses the Pests Destroyer during Jacob's contests",
             size = 1
     )
     public static boolean pausePestsDestroyerDuringJacobsContest = true;
 
-    @Setting(kind = Setting.Kind.BUTTON,
-            name = "Trigger now Pests Destroyer", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
+    @Setting(order = 10, kind = Setting.Kind.BUTTON,
+            name = "Trigger now Pests Destroyer", category = PESTS_DESTROYER, subcategory = "Pest Clearing",
             description = "Triggers the pests destroyer manually",
             text = "Trigger now"
     )
     public static final Runnable triggerManuallyPestsDestroyerButton = FarmHelperConfig::triggerManuallyPestsDestroyer;
 
     public static void triggerManuallyPestsDestroyer() {
-        if (PestsDestroyer.getInstance().canEnableMacro(true)) {
-            PestsDestroyer.getInstance().start();
-        }
+        PestsDestroyer.getInstance().startManually();
     }
 
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 30, kind = Setting.Kind.SWITCH,
             name = "Pests Destroyer Afk Infinite mode",
-            description = "Will turn on Pests Destroyer automatically when you are not farming. Click macro toggle button to disable this option",
-            category = PESTS_DESTROYER, subcategory = "Pests Destroyer"
+            description = "Clear pests while not farming, starting at one detected pest. Escape stops this mode.",
+            category = PESTS_DESTROYER, subcategory = "Pest Clearing"
     )
     public static boolean pestsDestroyerAfkInfiniteMode = false;
 
     @Setting(kind = Setting.Kind.SWITCH,
             name = "Pests Destroyer on the track",
             description = "Will kill pests if they are in your range while farming",
-            category = PESTS_DESTROYER, subcategory = "Pests Destroyer on the track"
+            category = PESTS_DESTROYER, subcategory = "Nearby Pests"
     )
     public static boolean pestsDestroyerOnTheTrack = false;
 
     @Setting(kind = Setting.Kind.SLIDER,
             name = "Pests Destroyer on the track FOV",
             description = "The field of view of the pests destroyer on the track",
-            category = PESTS_DESTROYER, subcategory = "Pests Destroyer on the track",
+            category = PESTS_DESTROYER, subcategory = "Nearby Pests",
             min = 1, max = 360
     )
     public static int pestsDestroyerOnTheTrackFOV = 360;
@@ -1375,7 +1384,7 @@ public class FarmHelperConfig extends NativeConfig {
     @Setting(kind = Setting.Kind.SLIDER,
             name = "Time for the pest to stay in range to activate (ms)",
             description = "The time for the pest to stay in range to activate the macro",
-            category = PESTS_DESTROYER, subcategory = "Pests Destroyer on the track",
+            category = PESTS_DESTROYER, subcategory = "Nearby Pests",
             min = 0, max = 2_000
     )
     public static int pestsDestroyerOnTheTrackTimeForPestToStayInRange = 750;
@@ -1383,7 +1392,7 @@ public class FarmHelperConfig extends NativeConfig {
     @Setting(kind = Setting.Kind.SLIDER,
             name = "Stuck timer (ms)",
             description = "The time after which macro will count as being stuck",
-            category = PESTS_DESTROYER, subcategory = "Pests Destroyer on the track",
+            category = PESTS_DESTROYER, subcategory = "Nearby Pests",
             min = 4_000, max = 25_000
     )
     public static int pestsDestroyerOnTheTrackStuckTimer = 5_000;
@@ -1391,13 +1400,13 @@ public class FarmHelperConfig extends NativeConfig {
     @Setting(kind = Setting.Kind.SWITCH,
             name = "Don't kill pests on track during Jacob's Contest",
             description = "Prevents the macro from killing pests on the track during Jacob's Contest",
-            category = PESTS_DESTROYER, subcategory = "Pests Destroyer on the track"
+            category = PESTS_DESTROYER, subcategory = "Nearby Pests"
     )
     public static boolean dontKillPestsOnTrackDuringJacobsContest = true;
 
-    @Setting(kind = Setting.Kind.KEYBIND,
-            name = "Enable Pests Destroyer", category = PESTS_DESTROYER, subcategory = "Pests Destroyer",
-            description = "Enables the pests destroyer",
+    @Setting(order = 20, kind = Setting.Kind.KEYBIND,
+            name = "Start Pests Destroyer (keybind)", category = PESTS_DESTROYER, subcategory = "Pest Clearing",
+            description = "Start one clearing run with a key. Shows a reason if blocked.",
             size = 2
     )
     public static ConfigKey enablePestsDestroyerKeyBind = new ConfigKey(GLFW.GLFW_KEY_UNKNOWN);
@@ -1405,37 +1414,37 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="Armor Swapper">
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Swap Armor Before Killing", category = PESTS_DESTROYER, subcategory = "Armor Swapper"
+            name = "Swap Armor Before Killing", category = PESTS_DESTROYER, subcategory = "Pest Gear"
     )
     public static boolean pestSwapArmorBefore = false;
 
     @Setting(kind = Setting.Kind.SLIDER,
-            name = "Wardrobe Slot To Kill With", category = PESTS_DESTROYER, subcategory = "Armor Swapper",
+            name = "Wardrobe Slot To Kill With", category = PESTS_DESTROYER, subcategory = "Pest Gear",
             description = "Wardrobe slot to use before turning on pest destroyer",
             min = 1, max = 18
     )
     public static int pestArmorSlot0 = 1;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Swap Armor After Killing", category = PESTS_DESTROYER, subcategory = "Armor Swapper"
+            name = "Swap Armor After Killing", category = PESTS_DESTROYER, subcategory = "Pest Gear"
     )
     public static boolean pestSwapArmorAfter = false;
 
     @Setting(kind = Setting.Kind.SLIDER,
-            name = "Wardrobe Slot To Farm With", category = PESTS_DESTROYER, subcategory = "Armor Swapper",
+            name = "Wardrobe Slot To Farm With", category = PESTS_DESTROYER, subcategory = "Pest Gear",
             description = "Wardrobe slot to equip after turning off pest destroyer",
             min = 1, max = 18
     )
     public static int pestArmorSlot1 = 1;
 
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Swap Equipments", category = PESTS_DESTROYER, subcategory = "Armor Swapper",
+            name = "Swap Equipments", category = PESTS_DESTROYER, subcategory = "Pest Gear",
             description = "Swap Equipments or not"
     )
     public static boolean pestSwapEquipments = false;
 
     @Setting(kind = Setting.Kind.TEXT,
-        name = "Pest Swap Equipments", category = PESTS_DESTROYER, subcategory = "Armor Swapper", size=2,
+        name = "Pest Swap Equipments", category = PESTS_DESTROYER, subcategory = "Pest Gear", size=2,
         description = "Separate Equipment Names With |", placeholder = "Pesthunter's Necklace|Pesthunter's Cloak|Pesthunter's Belt"
     )
     public static String pestSwapEq = "";
@@ -1444,43 +1453,43 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="Drawings">
-    @Setting(kind = Setting.Kind.COLOR,
-            name = "Rewarp Color", category = GENERAL, subcategory = "Rewarp",
+    @Setting(order = 41, kind = Setting.Kind.COLOR,
+            name = "Rewarp Color", category = HUD, subcategory = "Rewarp Markers",
             description = "The color of the rewarp box"
     )
     public static ConfigColor rewarpColor = new ConfigColor(0, 255, 217, 171);
-    @Setting(kind = Setting.Kind.COLOR,
-            name = "Spawn Color", category = GENERAL, subcategory = "Spawn Position",
+    @Setting(order = 51, kind = Setting.Kind.COLOR,
+            name = "Spawn Color", category = HUD, subcategory = "Spawn Marker",
             description = "The color of the spawn box"
     )
     public static ConfigColor spawnColor = new ConfigColor(0, 255, 217, 171);
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Pests ESP", category = PESTS_DESTROYER, subcategory = "Drawings",
+    @Setting(order = 30, kind = Setting.Kind.SWITCH,
+            name = "Pests ESP", category = HUD, subcategory = "Pest ESP and Tracers",
             description = "Draws a box around pests"
     )
     public static boolean pestsESP = true;
-    @Setting(kind = Setting.Kind.COLOR,
-            name = "ESP Color", category = PESTS_DESTROYER, subcategory = "Drawings",
+    @Setting(order = 31, kind = Setting.Kind.COLOR,
+            name = "ESP Color", category = HUD, subcategory = "Pest ESP and Tracers",
             description = "The color of the pests ESP"
     )
     public static ConfigColor pestsESPColor = new ConfigColor(0, 255, 217, 171);
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Tracers to Pests", category = PESTS_DESTROYER, subcategory = "Drawings",
+    @Setting(order = 32, kind = Setting.Kind.SWITCH,
+            name = "Tracers to Pests", category = HUD, subcategory = "Pest ESP and Tracers",
             description = "Draws a line to pests"
     )
     public static boolean pestsTracers = true;
-    @Setting(kind = Setting.Kind.COLOR,
-            name = "Tracers Color", category = PESTS_DESTROYER, subcategory = "Drawings",
+    @Setting(order = 33, kind = Setting.Kind.COLOR,
+            name = "Tracers Color", category = HUD, subcategory = "Pest ESP and Tracers",
             description = "The color of the pests tracers"
     )
     public static ConfigColor pestsTracersColor = new ConfigColor(0, 255, 217, 171);
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Highlight borders of Plot with pests", category = PESTS_DESTROYER, subcategory = "Drawings",
+    @Setting(order = 34, kind = Setting.Kind.SWITCH,
+            name = "Highlight borders of Plot with pests", category = HUD, subcategory = "Pest ESP and Tracers",
             description = "Highlights the borders of the plot with pests"
     )
     public static boolean highlightPlotWithPests = true;
-    @Setting(kind = Setting.Kind.COLOR,
-            name = "Plot Highlight Color", category = PESTS_DESTROYER, subcategory = "Drawings",
+    @Setting(order = 35, kind = Setting.Kind.COLOR,
+            name = "Plot Highlight Color", category = HUD, subcategory = "Pest ESP and Tracers",
             description = "The color of the plot highlight"
     )
     public static ConfigColor plotHighlightColor = new ConfigColor(0, 255, 217, 40);
@@ -1488,21 +1497,21 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="Logs">
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Send Webhook log if pests detection number has been exceeded", category = PESTS_DESTROYER, subcategory = "Logs",
+            name = "Send Webhook log if pests detection number has been exceeded", category = PESTS_DESTROYER, subcategory = "Pest Notifications",
             description = "Sends a webhook log if pests detection number has been exceeded"
     )
     public static boolean sendWebhookLogIfPestsDetectionNumberExceeded = true;
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Ping @everyone", category = PESTS_DESTROYER, subcategory = "Logs",
+            name = "Ping @everyone", category = PESTS_DESTROYER, subcategory = "Pest Notifications",
             description = "Pings @everyone on pests detection number exceeded"
     )
     public static boolean pingEveryoneOnPestsDetectionNumberExceeded = false;
     @Setting(kind = Setting.Kind.SWITCH,
-            name = "Send notification if pests detection number has been exceeded", category = PESTS_DESTROYER, subcategory = "Logs",
+            name = "Send notification if pests detection number has been exceeded", category = PESTS_DESTROYER, subcategory = "Pest Notifications",
             description = "Sends a notification if pests detection number has been exceeded"
     )
     public static boolean sendNotificationIfPestsDetectionNumberExceeded = true;
-    @Setting(kind = Setting.Kind.SWITCH, name = "Send Webhook log when pest destroyer starts/stops", category = PESTS_DESTROYER, subcategory = "Logs",
+    @Setting(kind = Setting.Kind.SWITCH, name = "Send Webhook log when pest destroyer starts/stops", category = PESTS_DESTROYER, subcategory = "Pest Notifications",
             description = "Sends a webhook log when pest destroyer starts/stops"
     )
     public static boolean sendWebhookLogWhenPestDestroyerStartsStops = true;
@@ -1512,90 +1521,104 @@ public class FarmHelperConfig extends NativeConfig {
     //<editor-fold desc="PEST FARMER">
     @Setting(kind = Setting.Kind.INFO,
             text = "Read the FarmHelper Guide to understand how to use this properly.",
-            category = PEST_FARMER, size = 2
+            category = PEST_FARMER, size = 2,
+            subcategory = "Pest Farming"
     )
     public static boolean ignored1;
 
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 90, kind = Setting.Kind.SWITCH,
             name = "Enable Pest Farming", category = PEST_FARMER,
-            description = "Enables Pest Farming"
+            description = "Enables Pest Farming",
+            subcategory = "Pest Farming"
     )
     public static boolean pestFarming = false;
 
     @Setting(kind = Setting.Kind.SWITCH,
             name = "Use Squeaky Mousemat To Set Angle", category = PEST_FARMER,
-            description = "Uses Squeaky Mousemat Ability to set Angle (Must be Preset)"
+            description = "Uses Squeaky Mousemat Ability to set Angle (Must be Preset)",
+            subcategory = "Pest Farming"
     )
     public static boolean pestFarmingUseMousemat = false;
 
     @Setting(kind = Setting.Kind.SLIDER,
             name = "Fermento Armor Slot", category = PEST_FARMER,
-            min = 1, max = 18
+            min = 1, max = 18,
+            subcategory = "Pest Farming"
     )
     public static int pestFarmingFermentoSlot = 1;
 
     @Setting(kind = Setting.Kind.SLIDER,
             name = "Biohazard Armor Slot", category = PEST_FARMER,
-            min = 1, max = 18
+            min = 1, max = 18,
+            subcategory = "Pest Farming"
     )
     public static int pestFarmingBiohazardSlot = 1;
 
     @Setting(kind = Setting.Kind.SLIDER,
             name = "Pest Spawn Timer (In seconds)", category = PEST_FARMER,
             description = "The time it should wait after pests spawn to swap slots (should be your pest spawn time - 5/10 seconds)",
-            min = 30, max = 300
+            min = 30, max = 300,
+            subcategory = "Pest Farming"
     )
     public static int pestFarmingWaitTime = 255;
 
     @Setting(kind = Setting.Kind.SWITCH,
         name = "Set Spawn After Armor Swap(Read Desc)", category = PEST_FARMER,
-        description = "Sets spawn after swapping armor. Sicne farmhelper does not have anything to farm shards, use this to kill manually while ensuring macro returns back to spawn automacially."
+        description = "Sets spawn after swapping armor. Sicne farmhelper does not have anything to farm shards, use this to kill manually while ensuring macro returns back to spawn automacially.",
+            subcategory = "Pest Farming"
     )
     public static boolean pestFarmingSetSpawn = false;
 
     @Setting(kind = Setting.Kind.SWITCH,
-        name = "Swap Equipments", category = PEST_FARMER
+        name = "Swap Equipments", category = PEST_FARMER,
+            subcategory = "Pest Farming"
     )
     public static boolean pestFarmingSwapEq = false;
 
     @Setting(kind = Setting.Kind.TEXT,
         name = "Farming Fortune Equipments", category = PEST_FARMER, size=2,
-        description = "Separate Equipment Names With |", placeholder = "Ex: Lotus Necklace|Lotus Cloak|Lotus Belt|Lotus Bracelet"
+        description = "Separate Equipment Names With |", placeholder = "Ex: Lotus Necklace|Lotus Cloak|Lotus Belt|Lotus Bracelet",
+            subcategory = "Pest Farming"
     )
     public static String pestFarmingEq0 = "";
 
     @Setting(kind = Setting.Kind.TEXT,
         name = "Pest Chance Equipments", category = PEST_FARMER, size=2,
-        description = "Separate Equipment Names With |", placeholder = "Ex: Pesthunter's Necklace|Pesthunter's Belt|Pesthunter's Gloves|Pest Vest"
+        description = "Separate Equipment Names With |", placeholder = "Ex: Pesthunter's Necklace|Pesthunter's Belt|Pesthunter's Gloves|Pest Vest",
+            subcategory = "Pest Farming"
     )
     public static String pestFarmingEq1 = "";
 
     @Setting(kind = Setting.Kind.SLIDER,
         name = "Equipment Click Delay", category = PEST_FARMER,
-        min = 300, max = 2000, step = 10
+        min = 300, max = 2000, step = 10,
+            subcategory = "Pest Farming"
     )
     public static int pestFarmerEquipmentClickDelay = 400;
 
     @Setting(kind = Setting.Kind.SWITCH,
-        name = "Start Pests Destroyer During Farming", category = PEST_FARMER
+        name = "Start Pests Destroyer During Farming", category = PEST_FARMER,
+            subcategory = "Pest Farming"
     )
     public static boolean pestFarmerKillPests = false;
 
     @Setting(kind = Setting.Kind.SWITCH,
-        name = "Cast Rod After Killing", category = PEST_FARMER
+        name = "Cast Rod After Killing", category = PEST_FARMER,
+            subcategory = "Pest Farming"
     )
     public static boolean pestFarmerCastRod = false;
 
     @Setting(kind = Setting.Kind.SLIDER,
         name = "Pest Count to Start Killing At", category = PEST_FARMER,
-        min = 1, max = 8
+        min = 1, max = 8,
+            subcategory = "Pest Farming"
     )
     public static int pestFarmerStartKillAt = 1;
 
     //</editor-fold>
     //<editor-fold desc="DISCORD INTEGRATION">
     //<editor-fold desc="Webhook Discord">
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Enable Webhook Messages", category = DISCORD_INTEGRATION, subcategory = "Discord Webhook",
             description = "Allows to send messages via Discord webhooks"
     )
@@ -1646,7 +1669,7 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="Remote Control">
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Enable Remote Control", category = DISCORD_INTEGRATION, subcategory = "Remote Control",
             description = "Enables remote control via Discord messages"
     )
@@ -1657,7 +1680,7 @@ public class FarmHelperConfig extends NativeConfig {
             description = "The bot token to use for remote control",
             secure = true
     )
-    public static String discordRemoteControlToken;
+    public static String discordRemoteControlToken = "";
     @Setting(kind = Setting.Kind.TEXT,
             name = "Discord Remote Control Address",
             category = DISCORD_INTEGRATION, subcategory = "Remote Control",
@@ -1704,7 +1727,7 @@ public class FarmHelperConfig extends NativeConfig {
     )
     public static boolean autoPestExchangeInfo1;
 
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 80, kind = Setting.Kind.SWITCH,
             name = "Enable Auto Pest Exchange", category = AUTO_PEST_EXCHANGE, subcategory = "Auto Pest Exchange",
             description = "Automatically hunts pests"
     )
@@ -1777,7 +1800,7 @@ public class FarmHelperConfig extends NativeConfig {
     )
     public static boolean autoPestExchangeInfo;
 
-    @Setting(kind = Setting.Kind.BUTTON,
+    @Setting(order = 81, kind = Setting.Kind.BUTTON,
             name = "Trigger now Auto Pest Exchange", category = AUTO_PEST_EXCHANGE, subcategory = "Auto Pest Exchange",
             description = "Triggers the auto pest exchange manually",
             text = "Trigger now"
@@ -1847,7 +1870,7 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="God Pot">
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Auto God Pot", category = AUTO_GOD_POT, subcategory = "God Pot",
             description = "Automatically purchases and consumes a God Pot", size = 2
     )
@@ -1899,7 +1922,7 @@ public class FarmHelperConfig extends NativeConfig {
     )
     public static boolean autoSellInfo;
 
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Enable Auto Sell", category = AUTO_SELL, subcategory = "Auto Sell",
             description = "Enables auto sell"
     )
@@ -1957,20 +1980,20 @@ public class FarmHelperConfig extends NativeConfig {
         AutoSell.getInstance().enable(true);
     };
 
-    @Setting(kind = Setting.Kind.SWITCH, name = "Runes", category = AUTO_SELL, subcategory = "Customize items sold to NPC")
+    @Setting(kind = Setting.Kind.SWITCH, name = "Runes", category = AUTO_SELL, subcategory = "Auto Sell: Item Filters")
     public static boolean autoSellRunes = true;
 
-    @Setting(kind = Setting.Kind.SWITCH, name = "Dead Bush", category = AUTO_SELL, subcategory = "Customize items sold to NPC")
+    @Setting(kind = Setting.Kind.SWITCH, name = "Dead Bush", category = AUTO_SELL, subcategory = "Auto Sell: Item Filters")
     public static boolean autoSellDeadBush = true;
 
-    @Setting(kind = Setting.Kind.SWITCH, name = "Iron Hoe", category = AUTO_SELL, subcategory = "Customize items sold to NPC")
+    @Setting(kind = Setting.Kind.SWITCH, name = "Iron Hoe", category = AUTO_SELL, subcategory = "Auto Sell: Item Filters")
     public static boolean autoSellIronHoe = true;
 
-    @Setting(kind = Setting.Kind.SWITCH, name = "Pest Vinyls", category = AUTO_SELL, subcategory = "Customize items sold to NPC")
+    @Setting(kind = Setting.Kind.SWITCH, name = "Pest Vinyls", category = AUTO_SELL, subcategory = "Auto Sell: Item Filters")
     public static boolean autoSellPestVinyls = true;
 
     @Setting(kind = Setting.Kind.TEXT,
-            name = "Custom Items", category = AUTO_SELL, subcategory = "Customize items sold to NPC",
+            name = "Custom Items", category = AUTO_SELL, subcategory = "Auto Sell: Item Filters",
             description = "Add custom items to AutoSell here. Use | to split the messages.",
             placeholder = "Custom items to auto sell. Use | to split the messages.",
             size = 2
@@ -1979,7 +2002,7 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="Pest Repellent">
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Auto Pest Repellent", category = AUTO_REPELLENT, subcategory = "Pest Repellent",
             description = "Automatically uses pest repellent when it's not active"
     )
@@ -2010,7 +2033,7 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="Auto Sprayonator">
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Auto Sprayonator", category = AUTO_SPRAYONATOR, subcategory = "Auto Sprayonator"
     )
     public static boolean autoSprayonator = false;
@@ -2066,7 +2089,7 @@ public class FarmHelperConfig extends NativeConfig {
     )
     public static boolean autoComposterInfo1;
 
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Enable Auto Composter", category = AUTO_COMPOSTER, subcategory = "Auto Composter",
             description = "Automatically fills the Composter"
     )
@@ -2346,27 +2369,27 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     //<editor-fold desc="HUD">
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Streamer mode", category = HUD, subcategory = "Streamer mode",
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
+            name = "Streamer mode", category = PRIVACY, subcategory = "Streamer Mode",
             description = "Hides everything Farm Helper related from the screen."
     )
     public static boolean streamerMode = false;
     @Setting(kind = Setting.Kind.INFO,
             text = "Streamer mode does NOT disable failsafe notifications or sounds! It only hides visual elements.",
             type = "WARNING",
-            category = HUD,
-            subcategory = "Streamer mode",
+            category = PRIVACY,
+            subcategory = "Streamer Mode",
             size = 2
     )
     public static boolean streamerModeInfo;
     @Setting(kind = Setting.Kind.INFO,
             text = "You must restart the game if you want to hide the window title after enabling the streamer mode.",
             type = "WARNING",
-            category = HUD,
-            subcategory = "Streamer mode"
+            category = PRIVACY,
+            subcategory = "Streamer Mode"
     )
     public static boolean streamerModeInfo2;
-    @Setting(kind = Setting.Kind.HUD,
+    @Setting(order = 0, kind = Setting.Kind.HUD,
             name = "Status HUD - Visual Settings", category = HUD, subcategory = "Status"
     )
     public static StatusHUD statusHUD = new StatusHUD();
@@ -2395,32 +2418,32 @@ public class FarmHelperConfig extends NativeConfig {
 //    public void resetStats() {
 //        ProfitCalculator.getInstance().resetProfits();
 //    }
-    @Setting(kind = Setting.Kind.HUD,
-            name = "Profit Calculator HUD - Visual Settings", category = HUD, subcategory = " "
+    @Setting(order = 10, kind = Setting.Kind.HUD,
+            name = "Profit Calculator HUD - Visual Settings", category = HUD, subcategory = "Profit Calculator"
     )
     public static ProfitCalculatorHUD profitHUD = new ProfitCalculatorHUD();
     @Setting(kind = Setting.Kind.SWITCH,
             name      = "Colour-code 24-hour total",
             description = "Green < 3.5 h, 3.5 h < Orange < 7 h, Red ≥ 7 h",
-            category  = HUD,
+            category = HUD,
             subcategory = "Usage Stats"
     )
     public static boolean colourCode24H = true;
     @Setting(kind = Setting.Kind.SWITCH,
             name      = "Show 24-hour total",
-            category  = HUD,
+            category = HUD,
             subcategory = "Usage Stats"
     )
     public static boolean showStats24H = true;
     @Setting(kind = Setting.Kind.SWITCH,
             name       = "Show 7-day total",
-            category   = HUD,
+            category = HUD,
             subcategory = "Usage Stats"
     )
     public static boolean showStats7D = false;
     @Setting(kind = Setting.Kind.SWITCH,
             name       = "Enable Long Term Data Storage",
-            category   = HUD,
+            category = HUD,
             subcategory = "Usage Stats"
     )
     public static boolean longTermUserStats = false;
@@ -2434,23 +2457,23 @@ public class FarmHelperConfig extends NativeConfig {
     public static boolean usageStatsInfo;
     @Setting(kind = Setting.Kind.SWITCH,
             name       = "Show 30-day total",
-            category   = HUD,
+            category = HUD,
             subcategory = "Usage Stats"
     )
     public static boolean showStats30D = false;
     @Setting(kind = Setting.Kind.SWITCH,
             name      = "Show lifetime total",
-            category  = HUD,
+            category = HUD,
             subcategory = "Usage Stats"
     )
     public static boolean showStatsLifetime = true;
     @Setting(kind = Setting.Kind.SWITCH,
             name      = "Show FH Usage Stats Title",
-            category  = HUD,
+            category = HUD,
             subcategory = "Usage Stats"
     )
     public static boolean showStatsTitle = false;
-    @Setting(kind = Setting.Kind.HUD,
+    @Setting(order = 20, kind = Setting.Kind.HUD,
             name = "Usage Stats HUD - Visual Settings",
             category = HUD,
             subcategory = "Usage Stats"
@@ -2489,7 +2512,7 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="Debug Hud">
     @Setting(kind = Setting.Kind.HUD,
-            name = "Debug HUD", category = DEBUG, subcategory = " "
+            name = "Debug HUD", category = DEBUG, subcategory = ""
     )
     public static DebugHUD debugHUD = new DebugHUD();
     //</editor-fold>
@@ -2497,7 +2520,7 @@ public class FarmHelperConfig extends NativeConfig {
 
     //<editor-fold desc="EXPERIMENTAL">
     //<editor-fold desc="Fastbreak">
-    @Setting(kind = Setting.Kind.SWITCH,
+    @Setting(order = 0, kind = Setting.Kind.SWITCH,
             name = "Enable Fast Break (DANGEROUS)", category = EXPERIMENTAL, subcategory = "Fast Break",
             description = "Fast Break is very risky and using it will most likely result in a ban. Proceed with caution."
     )
@@ -2569,10 +2592,6 @@ public class FarmHelperConfig extends NativeConfig {
 
     @Setting(kind = Setting.Kind.NUMBER, name = "Config Version", category = EXPERIMENTAL, subcategory = "Experimental", min = 0, max = 1337)
     public static int configVersion = 6;
-    @Setting(kind = Setting.Kind.SWITCH,
-            name = "Shown Welcome GUI", category = EXPERIMENTAL, subcategory = "Experimental"
-    )
-    public static boolean shownWelcomeGUI2 = false;
 
     public FarmHelperConfig() {
         super();
@@ -2705,7 +2724,7 @@ public class FarmHelperConfig extends NativeConfig {
         this.addDependency("delayBeforeReconnecting", "enableLeavePauseOnBanwave");
         this.addDependency("banwaveDontLeaveDuringJacobsContest", "enableLeavePauseOnBanwave");
 
-        this.addDependency("antiStuckTriesUntilRewarp", "enableAntiStuck");
+        this.addDependency("antiStuckTriesUntilRewarp", "tmpAntiStuckEnabled");
 
         this.addDependency("sendWebhookLogIfPestsDetectionNumberExceeded", "enableWebHook");
         this.addDependency("pingEveryoneOnPestsDetectionNumberExceeded", "sendWebhookLogIfPestsDetectionNumberExceeded");
@@ -2753,8 +2772,6 @@ public class FarmHelperConfig extends NativeConfig {
         this.addDependency("showStats30D", "longTermUserStats");
         this.addDependency("showStatsLifetime", "longTermUserStats");
 
-        this.hideIf("shownWelcomeGUI", () -> true);
-
         this.hideIf("configVersion", () -> true);
 
         registerKeyBind(openGuiKeybind, this::openGui);
@@ -2763,11 +2780,7 @@ public class FarmHelperConfig extends NativeConfig {
         });
         registerKeyBind(freelookKeybind, () -> Freelook.getInstance().toggle());
         registerKeyBind(plotCleaningHelperKeybind, () -> PlotCleaningHelper.getInstance().toggle());
-        registerKeyBind(enablePestsDestroyerKeyBind, () -> {
-            if (PestsDestroyer.getInstance().canEnableMacro(true)) {
-                PestsDestroyer.getInstance().start();
-            }
-        });
+        registerKeyBind(enablePestsDestroyerKeyBind, FarmHelperConfig::triggerManuallyPestsDestroyer);
         registerKeyBind(cancelFailsafeKeybind, () -> {
             if (FailsafeManager.getInstance().getChooseEmergencyDelay().isScheduled()) {
                 FailsafeManager.getInstance().stopFailsafes();

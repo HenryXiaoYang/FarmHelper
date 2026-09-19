@@ -43,21 +43,22 @@ public class CropUtils {
 
     public static net.minecraft.world.phys.shapes.VoxelShape selectionShape(BlockState state) {
         Block block = state.getBlock();
-        if (block instanceof CropBlock) {
-            int age = state.getValue(CropBlock.AGE);
-            double height = FarmHelperConfig.increasedCrops ? (block instanceof PotatoBlock || block instanceof CarrotBlock ? CARROT_POTATO_BOX[age].maxY : WHEAT_BOX[age].maxY) : 0.25;
+        if (block instanceof CropBlock crop) {
+            if (!FarmHelperConfig.increasedCrops || crop.getMaxAge() != 7) return null;
+            int age = crop.getAge(state);
+            double height = block instanceof PotatoBlock || block instanceof CarrotBlock ? CARROT_POTATO_BOX[age].maxY : WHEAT_BOX[age].maxY;
             return net.minecraft.world.phys.shapes.Shapes.box(0, 0, 0, 1, height, 1);
         }
-        if (block instanceof NetherWartBlock) return net.minecraft.world.phys.shapes.Shapes.box(0, 0, 0, 1,
-                FarmHelperConfig.increasedNetherWarts ? NETHER_WART_BOX[state.getValue(NetherWartBlock.AGE)].maxY : 0.25, 1);
-        if (block instanceof MushroomBlock) {
-            double min = FarmHelperConfig.increasedMushrooms ? 0 : 0.3;
+        if (block instanceof NetherWartBlock && FarmHelperConfig.increasedNetherWarts) return net.minecraft.world.phys.shapes.Shapes.box(0, 0, 0, 1,
+                NETHER_WART_BOX[state.getValue(NetherWartBlock.AGE)].maxY, 1);
+        if (block instanceof MushroomBlock && FarmHelperConfig.increasedMushrooms) {
+            double min = 0;
             return net.minecraft.world.phys.shapes.Shapes.box(min, 0, min, 1 - min, 0.5, 1 - min);
         }
-        if (block instanceof CocoaBlock) {
+        if (block instanceof CocoaBlock && FarmHelperConfig.increasedCocoaBeans) {
             int age = state.getValue(CocoaBlock.AGE), j = 4 + age * 2, k = 5 + age * 2;
-            double low = FarmHelperConfig.increasedCocoaBeans ? 0 : (8 - j / 2.0) / 16;
-            double high = FarmHelperConfig.increasedCocoaBeans ? 1 : (8 + j / 2.0) / 16;
+            double low = 0;
+            double high = 1;
             double bottom = (12 - k) / 16.0;
             return switch (state.getValue(CocoaBlock.FACING)) {
                 case SOUTH -> net.minecraft.world.phys.shapes.Shapes.box(low, bottom, (15 - j) / 16.0, high, 0.75, 0.9375);
@@ -85,8 +86,8 @@ public class CropUtils {
     }
 
     public static boolean isCropReady(Block block, BlockPos blockPos) {
-        if (block instanceof CropBlock) {
-            return Minecraft.getInstance().level.getBlockState(blockPos).getValue(CropBlock.AGE) == 7;
+        if (block instanceof CropBlock crop) {
+            return crop.isMaxAge(Minecraft.getInstance().level.getBlockState(blockPos));
         } else if (block instanceof PotatoBlock) {
             return Minecraft.getInstance().level.getBlockState(blockPos).getValue(PotatoBlock.AGE) == 7;
         } else if (block instanceof CarrotBlock) {

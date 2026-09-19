@@ -17,6 +17,37 @@ public final class PortChecks {
         public void last(Event event) { calls.add("last"); }
     }
     public static void main(String[] args) throws Exception {
+        FarmHelperClient.ready = true;
+        checkSettingDependencies();
+        var diagonal = new net.minecraft.world.phys.Vec3(0.0025, 0.0025, 0.0025);
+        var trimmed = com.jelly.farmhelperv3.util.helper.PlayerSimulation.trimMovement(diagonal);
+        check(trimmed.x == diagonal.x && trimmed.z == diagonal.z && trimmed.y == 0, "26.1 player cutoff uses combined horizontal speed");
+        check(com.jelly.farmhelperv3.util.helper.PlayerSimulation.trimMovement(new net.minecraft.world.phys.Vec3(0.002, 0.003, 0.002)).equals(new net.minecraft.world.phys.Vec3(0, 0.003, 0)), "Vertical cutoff is strict below 0.003");
+        var rare = net.minecraft.network.chat.Component.literal("Visitor").withStyle(net.minecraft.ChatFormatting.GOLD);
+        check(com.jelly.farmhelperv3.util.TextUtils.formatted(rare).startsWith("§6"), "Preserve styled rarity color");
+        check(net.minecraft.ChatFormatting.stripFormatting(com.jelly.farmhelperv3.util.TextUtils.formatted(rare.copy().append(net.minecraft.network.chat.Component.literal(" Reward").withStyle(net.minecraft.ChatFormatting.GREEN)))).equals("Visitor Reward"), "Styled text retains plain content");
+
+        // Simulate a stalled authentication request: it must not occupy the timer
+        // or prevent another background request from being dispatched.
+        var started = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var next = new java.util.concurrent.CountDownLatch(1);
+        var worker = new java.util.concurrent.atomic.AtomicReference<Thread>();
+        try {
+            com.jelly.farmhelperv3.util.Tasks.background(() -> {
+                worker.set(Thread.currentThread());
+                started.countDown();
+                try { release.await(); }
+                catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            }, 0, java.util.concurrent.TimeUnit.MILLISECONDS);
+            check(started.await(5, java.util.concurrent.TimeUnit.SECONDS), "Background request must start");
+            check(worker.get().isVirtual() && worker.get() != Thread.currentThread(), "Network work must run off the calling thread");
+            com.jelly.farmhelperv3.util.Tasks.background(next::countDown, 0, java.util.concurrent.TimeUnit.MILLISECONDS);
+            check(next.await(5, java.util.concurrent.TimeUnit.SECONDS), "Stalled I/O must not block the scheduler");
+        } finally {
+            release.countDown();
+            com.jelly.farmhelperv3.util.Tasks.shutdown();
+        }
         Listeners listener = new Listeners();
         Events.BUS.register(listener);
         Events.BUS.register(listener);
@@ -73,4 +104,33 @@ public final class PortChecks {
         }
     }
     private static void check(boolean ok, String description) { if (!ok) throw new AssertionError(description); }
+
+    private static void checkSettingDependencies() throws java.io.IOException {
+        // Inspect the compiled declarations without initializing Minecraft or the config.
+        try (var input = PortChecks.class.getResourceAsStream("/com/jelly/farmhelperv3/config/FarmHelperConfig.class")) {
+            var model = java.lang.classfile.ClassFile.of().parse(Objects.requireNonNull(input).readAllBytes());
+            var booleans = new HashSet<String>();
+            for (var field : model.fields()) {
+                if (field.fieldType().stringValue().equals("Z") && java.lang.reflect.Modifier.isPublic(field.flags().flagsMask()))
+                    booleans.add(field.fieldName().stringValue());
+            }
+            int checked = 0;
+            for (var method : model.methods()) {
+                if (!method.methodName().stringValue().equals("<init>")) continue;
+                var instructions = method.code().orElseThrow().elementList().stream()
+                        .filter(java.lang.classfile.Instruction.class::isInstance).toList();
+                for (int i = 2; i < instructions.size(); i++) {
+                    if (!(instructions.get(i) instanceof java.lang.classfile.instruction.InvokeInstruction call)
+                            || !Set.of("addDependency", "hideIf").contains(call.name().stringValue())
+                            || !call.type().stringValue().equals("(Ljava/lang/String;Ljava/lang/String;)V")) continue;
+                    var target = ((java.lang.classfile.instruction.ConstantInstruction) instructions.get(i - 2)).constantValue();
+                    var dependency = ((java.lang.classfile.instruction.ConstantInstruction) instructions.get(i - 1)).constantValue();
+                    check(booleans.contains(dependency), "Setting " + target + " refers to missing/non-public boolean " + dependency);
+                    checked++;
+                }
+            }
+            check(checked > 0, "Configuration dependencies must be checked");
+            System.out.println("Checked " + checked + " boolean setting dependencies");
+        }
+    }
 }

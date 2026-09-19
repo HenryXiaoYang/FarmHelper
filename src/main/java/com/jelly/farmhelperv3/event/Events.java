@@ -33,6 +33,7 @@ public final class Events {
     public void unregister(Object target) { listeners.removeIf(l -> l.target == target); }
 
     public boolean post(Event event) {
+        if (this == BUS && !com.jelly.farmhelperv3.FarmHelperClient.ready) return false;
         for (Listener listener : listeners) {
             if (!listener.type.isInstance(event) || event.isCanceled() && !listener.subscription.receiveCanceled()) continue;
             try {

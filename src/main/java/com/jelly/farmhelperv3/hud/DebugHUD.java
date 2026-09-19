@@ -39,7 +39,7 @@ public class DebugHUD extends TextHud {
         }
         lines.add("Bountiful: " + ProfitCalculator.getInstance().getBountifulProfit());
         ItemStack heldItem = Minecraft.getInstance().player.getMainHandItem();
-        lines.add("Cultivating: " + GameStateHandler.getInstance().getCurrentCultivating().getOrDefault((heldItem != null && !heldItem.isEmpty()) ? heldItem.getDisplayName().getString() : "", 0L));
+        lines.add("Cultivating: " + GameStateHandler.getInstance().getCurrentCultivating().getOrDefault((heldItem != null && !heldItem.isEmpty()) ? heldItem.getHoverName().getString() : "", 0L));
         lines.add("Purse: " + GameStateHandler.getInstance().getCurrentPurse());
         lines.add("Copper: " + GameStateHandler.getInstance().getCopper());
 

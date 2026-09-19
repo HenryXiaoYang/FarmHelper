@@ -9,11 +9,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Camera.class)
 public class MixinEntityRenderer {
     @ModifyVariable(method = "setRotation", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private float farmhelper$yaw(float yaw) { return Freelook.getInstance().getYaw(yaw); }
+    private float farmhelper$yaw(float yaw) { return com.jelly.farmhelperv3.FarmHelperClient.ready ? Freelook.getInstance().getYaw(yaw) : yaw; }
     @ModifyVariable(method = "setRotation", at = @At("HEAD"), argsOnly = true, ordinal = 1)
-    private float farmhelper$pitch(float pitch) { return Freelook.getInstance().getPitch(pitch); }
+    private float farmhelper$pitch(float pitch) { return com.jelly.farmhelperv3.FarmHelperClient.ready ? Freelook.getInstance().getPitch(pitch) : pitch; }
     @Inject(method = "getMaxZoom", at = @At("HEAD"), cancellable = true)
     private void farmhelper$distance(float distance, CallbackInfoReturnable<Float> cir) {
-        if (Freelook.getInstance().isRunning()) cir.setReturnValue(Freelook.getInstance().getDistance());
+        if (com.jelly.farmhelperv3.FarmHelperClient.ready && Freelook.getInstance().isRunning()) cir.setReturnValue(Freelook.getInstance().getDistance());
     }
 }

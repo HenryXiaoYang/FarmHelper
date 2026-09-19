@@ -13,7 +13,6 @@ import com.jelly.farmhelperv3.util.PlayerUtils;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 
 import java.util.concurrent.TimeUnit;
 
@@ -60,28 +59,13 @@ public class ItemChangeFailsafe extends Failsafe {
     public void onReceivedPacketDetection(ReceivePacketEvent event) {
         if (MacroHandler.getInstance().isTeleporting()) return;
 
-        if (!(event.packet instanceof ClientboundContainerSetSlotPacket)) return;
-
-        ClientboundContainerSetSlotPacket packet = (ClientboundContainerSetSlotPacket) event.packet;
-        int slot = packet.getSlot();
-
-//        if (slot >= 36 && slot < 45 && mc.player.getInventory().getSelectedSlot() + 36 == slot)
-//            LogUtils.sendSuccess("[Failsafe] Failsafe triggered!");
-        int farmingToolSlot = -1;
-        try {
-            farmingToolSlot = PlayerUtils.getFarmingTool(MacroHandler.getInstance().getCrop(), true, false);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
-        if (farmingToolSlot == -1) return;
-        ItemStack farmingTool = mc.player.getInventory().getItem(farmingToolSlot);
-        if (slot == 36 + farmingToolSlot &&
-                (farmingTool != null && !farmingTool.isEmpty()) &&
-                !(farmingTool.getItem() instanceof HoeItem) &&
-                !(farmingTool.getItem() instanceof AxeItem)) {
-            LogUtils.sendDebug("[Failsafe] No farming tool in hand! Slot: " + slot);
-            FailsafeManager.getInstance().possibleDetection(this);
+        for (var change : event.inventoryChanges) {
+            if (change.inventoryIndex() != mc.player.getInventory().getSelectedSlot()) continue;
+            if (com.jelly.farmhelperv3.util.InventoryUtils.isFarmingTool(change.before())
+                    && !com.jelly.farmhelperv3.util.InventoryUtils.isFarmingTool(change.after())) {
+                LogUtils.sendDebug("[Failsafe] Farming tool replaced in selected hotbar slot");
+                FailsafeManager.getInstance().possibleDetection(this);
+            }
         }
     }
 

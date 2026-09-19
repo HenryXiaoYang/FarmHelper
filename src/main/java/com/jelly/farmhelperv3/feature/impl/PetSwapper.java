@@ -180,7 +180,7 @@ public class PetSwapper implements IFeature {
                 for (ItemStack itemStack : inventory) {
                     if (itemStack == null) continue;
                     List<String> petLore = InventoryUtils.getItemLore(itemStack);
-                    String petName = ChatFormatting.stripFormatting(itemStack.getDisplayName().getString());
+                    String petName = ChatFormatting.stripFormatting(itemStack.getHoverName().getString());
                     if (petName.contains("]")) {
                         petName = petName.substring(petName.indexOf("]") + 2);
                     }
@@ -236,7 +236,7 @@ public class PetSwapper implements IFeature {
 
                 for (ItemStack itemStack : inventory) {
                     if (itemStack == null) continue;
-                    String petName = ChatFormatting.stripFormatting(itemStack.getDisplayName().getString());
+                    String petName = ChatFormatting.stripFormatting(itemStack.getHoverName().getString());
                     if (petName.contains("]")) {
                         petName = petName.substring(petName.indexOf("]") + 2);
                     }

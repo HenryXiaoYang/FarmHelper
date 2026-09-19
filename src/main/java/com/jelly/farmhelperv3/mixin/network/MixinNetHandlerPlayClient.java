@@ -31,7 +31,7 @@ import static com.jelly.farmhelperv3.util.TablistUtils.playerOrdering;
 public class MixinNetHandlerPlayClient {
     @Inject(method = "handleParticleEvent", at = @At(value = "HEAD"))
     public void handleParticles(ClientboundLevelParticlesPacket packetIn, CallbackInfo ci) {
-        if (!Minecraft.getInstance().isSameThread()) return;
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready || !Minecraft.getInstance().isSameThread()) return;
         SpawnParticleEvent event = new SpawnParticleEvent(
                 packetIn.getParticle(),
                 packetIn.isOverrideLimiter(),
@@ -48,7 +48,7 @@ public class MixinNetHandlerPlayClient {
 
     @Inject(method = "handleAddEntity", at = @At(value = "HEAD"))
     public void handleSpawnObject(ClientboundAddEntityPacket packetIn, CallbackInfo ci) {
-        if (!Minecraft.getInstance().isSameThread()) return;
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready || !Minecraft.getInstance().isSameThread()) return;
         SpawnObjectEvent event = new SpawnObjectEvent(
                 packetIn.getId(),
                 packetIn.getX(),
@@ -69,26 +69,28 @@ public class MixinNetHandlerPlayClient {
     @Unique
     private final List<String> farmHelperV3$previousFooter = new ArrayList<>();
 
-    @Inject(method = "handlePlayerInfoUpdate", at = @At(value = "RETURN"))
-    public void handlePlayerListItem(ClientboundPlayerInfoUpdatePacket packetIn, CallbackInfo ci) {
+    @Inject(method = {"handlePlayerInfoUpdate", "handlePlayerInfoRemove", "handleSetPlayerTeamPacket"}, at = @At(value = "RETURN"))
+    public void handlePlayerListItem(CallbackInfo ci) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         List<String> tablist = new ArrayList<>();
         List<PlayerInfo> players =
-                playerOrdering.sortedCopy(Minecraft.getInstance().getConnection().getOnlinePlayers());
+                playerOrdering.sortedCopy(Minecraft.getInstance().getConnection().getListedOnlinePlayers());
 
         PlayerTabOverlay tabOverlay = Minecraft.getInstance().gui.getTabList();
 
         for (PlayerInfo info : players) {
-            tablist.add(ChatFormatting.stripFormatting(tabOverlay.getNameForDisplay(info).getString()));
+            tablist.add(com.jelly.farmhelperv3.util.TextUtils.formatted(tabOverlay.getNameForDisplay(info)));
         }
         if (tablist.equals(farmHelperV3$previousTablist)) return;
         farmHelperV3$previousTablist.clear();
         farmHelperV3$previousTablist.addAll(tablist);
         TablistUtils.setCachedTablist(tablist);
-        Events.BUS.post(new UpdateTablistEvent(tablist, System.currentTimeMillis()));
+        Events.BUS.post(new UpdateTablistEvent(List.copyOf(TablistUtils.getTabList()), System.currentTimeMillis()));
     }
 
     @Inject(method = "handleTabListCustomisation", at = @At("RETURN"))
     public void handlePlayerListHeaderFooter(ClientboundTabListPacket packetIn, CallbackInfo ci) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         List<String> footer = new ArrayList<>();
         if (packetIn.footer() == null) return;
         for (String s : packetIn.footer().getString().split("\n")) {

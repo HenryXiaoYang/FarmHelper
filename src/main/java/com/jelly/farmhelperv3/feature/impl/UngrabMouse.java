@@ -2,6 +2,9 @@ package com.jelly.farmhelperv3.feature.impl;
 
 import com.jelly.farmhelperv3.config.FarmHelperConfig;
 import com.jelly.farmhelperv3.feature.IFeature;
+import com.jelly.farmhelperv3.handler.MacroHandler;
+import com.jelly.farmhelperv3.util.KeyBindUtils;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 
@@ -29,8 +32,17 @@ public class UngrabMouse implements IFeature {
     public void regrabMouse() { regrabMouse(false); }
     public void regrabMouse(boolean force) {
         if (!mouseUngrabbed && !force) return;
+        boolean preserveInput = mouseUngrabbed && MacroHandler.getInstance().isMacroToggled() && mc.screen == null;
+        int previousMissTime = mc.missTime;
+        KeyMapping[] heldKeys = preserveInput ? KeyBindUtils.getHoldingKeybinds() : new KeyMapping[0];
         mouseUngrabbed = false;
         if (mc.screen == null || force) mc.mouseHandler.grabMouse();
+        if (preserveInput) {
+            // Capturing the cursor sets missTime to 10000 and, outside macOS,
+            // replaces synthetic held keys with their physical keyboard states.
+            mc.missTime = previousMissTime;
+            for (KeyMapping key : heldKeys) if (key != null) key.setDown(true);
+        }
     }
     public boolean isMouseUngrabbed() { return mouseUngrabbed; }
 

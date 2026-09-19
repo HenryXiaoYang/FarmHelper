@@ -217,7 +217,7 @@ public class BanInfoWS implements IFeature {
                 reconnectDelay.reset();
                 receivedBanwaveInfo = false;
                 LogUtils.sendDebug("Connecting to analytics server...");
-                Tasks.schedule(() -> {
+                Tasks.background(() -> {
                     lastReceivedPacket = System.currentTimeMillis();
                     JsonObject headers = getHeaders();
                     if (headers == null) {
@@ -275,6 +275,10 @@ public class BanInfoWS implements IFeature {
     }
 
     public void playerBanned(int days, String reason, String banId, String fullReason) {
+        if (Minecraft.getInstance().isSameThread()) {
+            Tasks.background(() -> playerBanned(days, reason, banId, fullReason), 0, TimeUnit.MILLISECONDS);
+            return;
+        }
         if (System.currentTimeMillis() - GameStateHandler.getInstance().getLastTimeInGarden() > 15_000L) return;
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("message", "gotBanned");
@@ -303,7 +307,7 @@ public class BanInfoWS implements IFeature {
             String serverId = mojangAuthentication();
             jsonObject.addProperty("serverId", serverId);
         } catch (AuthenticationException e) {
-            Tasks.schedule(() -> playerBanned(days, reason, banId, fullReason), 1337, TimeUnit.MILLISECONDS);
+            Tasks.background(() -> playerBanned(days, reason, banId, fullReason), 1337, TimeUnit.MILLISECONDS);
             return;
         }
 

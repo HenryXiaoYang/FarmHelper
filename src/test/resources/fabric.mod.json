@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "farmhelperv3_checks",
+  "version": "1.0.0",
+  "name": "FarmHelper Local Regression Checks",
+  "environment": "client",
+  "entrypoints": { "client": ["com.jelly.farmhelperv3.ClientChecks"] },
+  "depends": { "farmhelperv3": "*" }
+}

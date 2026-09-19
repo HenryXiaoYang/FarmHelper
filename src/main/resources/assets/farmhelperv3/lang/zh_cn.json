@@ -1,0 +1,9 @@
+{
+  "farmhelperv3.settings.unsaved": "设置尚未保存",
+  "farmhelperv3.settings.unsaved_message": "退出前是否保存本次修改？",
+  "farmhelperv3.settings.invalid_message": "部分输入无效。请继续编辑并修正，或放弃本次修改。",
+  "farmhelperv3.settings.save_exit": "保存并退出",
+  "farmhelperv3.settings.apply_back": "应用并返回",
+  "farmhelperv3.settings.discard_exit": "放弃修改",
+  "farmhelperv3.settings.keep_editing": "继续编辑"
+}

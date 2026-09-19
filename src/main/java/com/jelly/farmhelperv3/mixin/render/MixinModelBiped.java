@@ -17,6 +17,7 @@ public class MixinModelBiped {
     @Shadow @Final public ModelPart head;
     @Inject(method = "setupAnim(Lnet/minecraft/client/renderer/entity/state/HumanoidRenderState;)V", at = @At("RETURN"))
     private void farmhelper$head(HumanoidRenderState state, CallbackInfo ci) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         var player = Minecraft.getInstance().player;
         if (player == null || !(state instanceof AvatarRenderState avatar) || avatar.id != player.getId()) return;
         var rotation = RotationHandler.getInstance();

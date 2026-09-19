@@ -43,6 +43,7 @@ public class MixinBlockRendererDispatcher {
 
     @Inject(method = "tesselateBlock", at = @At("HEAD"), cancellable = true)
     private void renderBlock(net.minecraft.client.renderer.block.BlockQuadOutput output, float x, float y, float z, net.minecraft.client.renderer.block.BlockAndTintGetter level, BlockPos pos, BlockState state, net.minecraft.client.renderer.block.dispatch.BlockStateModel model, long seed, CallbackInfo cir) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         if (FarmHelperConfig.performanceMode && (MacroHandler.getInstance().isMacroToggled())) {
             if (FarmHelperConfig.fastRender) {
                 BlockPos playerPos = mc.player.blockPosition();

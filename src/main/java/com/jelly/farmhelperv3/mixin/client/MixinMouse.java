@@ -12,15 +12,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinMouse {
     @Inject(method = "onButton", at = @At("HEAD"), cancellable = true)
     private void farmhelper$button(long window, net.minecraft.client.input.MouseButtonInfo button, int action, CallbackInfo ci) {
+        if (Minecraft.getInstance().screen != null || !com.jelly.farmhelperv3.FarmHelperClient.ready || Minecraft.getInstance().player == null) return;
         if (action == org.lwjgl.glfw.GLFW.GLFW_PRESS && window == Minecraft.getInstance().getWindow().handle() && com.jelly.farmhelperv3.FarmHelper.config != null && com.jelly.farmhelperv3.FarmHelper.config.keyPressed(button.button() - 100)) ci.cancel();
     }
     @Inject(method = "grabMouse", at = @At("HEAD"), cancellable = true)
     private void farmhelper$keepUngrabbed(CallbackInfo ci) {
-        if (com.jelly.farmhelperv3.feature.impl.UngrabMouse.getInstance().isMouseUngrabbed()) ci.cancel();
+        if (com.jelly.farmhelperv3.FarmHelperClient.ready && com.jelly.farmhelperv3.feature.impl.UngrabMouse.getInstance().isMouseUngrabbed()) ci.cancel();
     }
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
     private void farmhelper$scroll(long window, double horizontal, double vertical, CallbackInfo ci) {
-        if (Minecraft.getInstance().screen != null) return;
+        if (Minecraft.getInstance().screen != null || !com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         if (Freelook.getInstance().isRunning()) {
             Freelook.getInstance().setDistance(Math.min(20, Math.max(1, Freelook.getInstance().getDistance() - (float)vertical)));
             ci.cancel();

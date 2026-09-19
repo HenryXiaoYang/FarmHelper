@@ -230,7 +230,7 @@ public class PestsDestroyerOnTheTrack implements IFeature {
 
     private boolean getVacuum() {
         ItemStack currentItem = mc.player.getMainHandItem();
-        if ((currentItem == null || currentItem.isEmpty()) || !currentItem.getDisplayName().getString().contains("Vacuum")) {
+        if ((currentItem == null || currentItem.isEmpty()) || !currentItem.getHoverName().getString().contains("Vacuum")) {
             int vacuum = InventoryUtils.getSlotIdOfItemInHotbar("Vacuum");
             if (vacuum == -1) {
                 LogUtils.sendError("[Pests Destroyer On The Track] Failed to find vacuum in hotbar!");

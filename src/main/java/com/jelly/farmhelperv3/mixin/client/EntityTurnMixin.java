@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class EntityTurnMixin {
     @Inject(method = "turn", at = @At("HEAD"), cancellable = true)
     private void farmhelper$freelook(double yaw, double pitch, CallbackInfo ci) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         if ((Object)this != Minecraft.getInstance().player || !Freelook.getInstance().isRunning()) return;
         Freelook look = Freelook.getInstance();
         look.setCameraPrevYaw(look.getCameraYaw()); look.setCameraPrevPitch(look.getCameraPitch());

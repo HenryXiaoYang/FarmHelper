@@ -7,6 +7,7 @@ import java.lang.annotation.*;
 public @interface Setting {
     enum Kind { SWITCH, DROPDOWN, NUMBER, SLIDER, TEXT, BUTTON, INFO, PAGE, HUD, COLOR, KEYBIND, DUALOPTION, CHECKBOX }
     Kind kind();
+    int order() default 100;
     String name() default "";
     String description() default "";
     String category() default "";

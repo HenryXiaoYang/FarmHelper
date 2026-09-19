@@ -257,7 +257,7 @@ public class AutoBazaar implements IFeature {
                     this.timer.schedule(FarmHelperConfig.getRandomGUIMacroDelay());
 
                     Predicate<Slot> buyPredicate = slot -> slot.hasItem()
-                            && (ChatFormatting.stripFormatting(slot.getItem().getDisplayName().getString()).startsWith("Buy") || ChatFormatting.stripFormatting(slot.getItem().getDisplayName().getString()).startsWith("Fill"))
+                            && (ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString()).startsWith("Buy") || ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString()).startsWith("Fill"))
                             && slot.index < mc.player.containerMenu.slots.size() - 37;
                     List<Slot> buySlots = InventoryUtils.getIndexesOfItemsFromContainer(buyPredicate);
 

@@ -24,7 +24,6 @@ import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.util.StringUtil;
 import com.jelly.farmhelperv3.event.Events.ClientChatReceivedEvent;
 import com.jelly.farmhelperv3.event.Events.WorldEvent;
@@ -106,6 +105,7 @@ public class GameStateHandler {
     private List<Integer> infestedPlots = new ArrayList<>();
     @Getter
     private int pestsCount = 0;
+    private Integer tabPestsCount;
     @Getter
     private int currentPlotPestsCount = 0;
     @Getter
@@ -143,6 +143,10 @@ public class GameStateHandler {
     public void onWorldChange(WorldEvent.Unload event) {
         lastLocation = location;
         location = Location.TELEPORTING;
+        currentCultivating.clear();
+        tabPestsCount = null;
+        pestsCount = currentPlotPestsCount = 0;
+        infestedPlots.clear();
         serverClosingSeconds = Optional.empty();
     }
 
@@ -165,6 +169,8 @@ public class GameStateHandler {
 
     @SubscribeEvent
     public void onTablistUpdate(UpdateTablistEvent event) {
+        if (mc.player == null || mc.level == null) return;
+        checkPestsTabList(event.tablist);
         if (event.tablist.isEmpty()) return;
         List<String> tabList = new ArrayList<>(event.tablist);
 
@@ -206,7 +212,6 @@ public class GameStateHandler {
                     hasGuestsOnTabList = true;
                 }
             }
-            checkInfestedPlotsTabList(cleanedLine);
             if (!foundPestHunterBonus) {
                 int retPestHunter = checkPestHunterBonusTabList(cleanedLine);
                 if (retPestHunter == 1) {
@@ -437,46 +442,56 @@ public class GameStateHandler {
         }
     }
 
+    private void checkPestsTabList(List<String> lines) {
+        tabPestsCount = null;
+        boolean pestSection = false;
+        for (String text : lines) {
+            String line = ChatFormatting.stripFormatting(text).strip();
+            if (line.equals("Pests:")) { pestSection = true; continue; }
+            if (line.startsWith("Plots:")) checkInfestedPlotsTabList(line);
+            if (!pestSection || line.isEmpty()) continue;
+            if (line.startsWith("Alive:")) {
+                try {
+                    int count = Integer.parseInt(line.substring("Alive:".length()).strip().replace(",", ""));
+                    if (count >= 0) tabPestsCount = count;
+                } catch (NumberFormatException ignored) { /* Incomplete tab updates are not a known zero. */ }
+            } else if (!line.matches("(?:Plots|Spray|Repellent|Bonus|Cooldown):.*")) {
+                pestSection = false;
+            }
+        }
+        if (lines.isEmpty()) infestedPlots.clear();
+        checkCurrentPests(ScoreboardUtils.getScoreboardLines(true));
+    }
+
     private void checkCurrentPests(List<String> list) {
-        int pestsCountTemp = 0;
+        int scoreboardCount = 0;
         for (String cleanedLine : list) {
             if (cleanedLine.contains("The Garden") && cleanedLine.contains("ൠ")) {
                 try {
-                    String[] split = cleanedLine.trim().split(" ");
-                    int temp = Integer.parseInt(split[split.length - 1].trim().replace("x", ""));
-                    int previousPestsCount = pestsCount;
-                    pestsCount = temp;
-                    pestsCountTemp = temp;
-                    if (pestsCount > previousPestsCount && !PestsDestroyer.getInstance().isRunning() && pestsCount > FarmHelperConfig.startKillingPestsAt) {
-                        if (FarmHelperConfig.sendWebhookLogIfPestsDetectionNumberExceeded) {
-                            LogUtils.webhookLog("[Pests Destroyer]\\nThere " + (pestsCount > 1 ? "are" : "is") + " currently **" + pestsCount + "** " + (pestsCount > 1 ? "pests" : "pest") + " in the garden!", FarmHelperConfig.pingEveryoneOnPestsDetectionNumberExceeded);
-                        }
-                        if (FarmHelperConfig.sendNotificationIfPestsDetectionNumberExceeded) {
-                            FailsafeUtils.getInstance().sendNotification("There " + (pestsCount > 1 ? "are" : "is") + " currently " + pestsCount + " " + (pestsCount > 1 ? "pests" : "pest") + " in the garden!", TrayIcon.MessageType.WARNING);
-                        }
-                    }
-                } catch (NumberFormatException ignored) {
-                    pestsCount = 0;
-                }
+                    String[] split = cleanedLine.trim().split("\\s+");
+                    scoreboardCount = Integer.parseInt(split[split.length - 1].replace("x", ""));
+                } catch (NumberFormatException ignored) { }
             }
-            if (cleanedLine.contains("Plot") && cleanedLine.contains("x")) {
-                String[] split = cleanedLine.trim().split(" ");
-                String last = split[split.length - 1];
-                try {
-                    currentPlotPestsCount = Integer.parseInt(last.replace("x", ""));
-                } catch (NumberFormatException ignored) {
-                    currentPlotPestsCount = 0;
-                }
-            } else if (cleanedLine.contains("Plot")) {
+            if (cleanedLine.contains("Plot")) {
                 currentPlotPestsCount = 0;
+                if (cleanedLine.contains("x")) {
+                    try {
+                        String[] split = cleanedLine.trim().split("\\s+");
+                        currentPlotPestsCount = Integer.parseInt(split[split.length - 1].replace("x", ""));
+                    } catch (NumberFormatException ignored) { }
+                }
             }
         }
-        if (pestsCountTemp != pestsCount) {
-            pestsCount = pestsCountTemp;
+        // Tab's explicit Alive value (including zero) outranks the optional sidebar icon.
+        int previousPestsCount = pestsCount;
+        pestsCount = tabPestsCount != null ? tabPestsCount : scoreboardCount;
+        if (pestsCount > previousPestsCount && !PestsDestroyer.getInstance().isRunning() && pestsCount > FarmHelperConfig.startKillingPestsAt) {
+            if (FarmHelperConfig.sendWebhookLogIfPestsDetectionNumberExceeded)
+                LogUtils.webhookLog("[Pests Destroyer]\\nThere " + (pestsCount > 1 ? "are" : "is") + " currently **" + pestsCount + "** " + (pestsCount > 1 ? "pests" : "pest") + " in the garden!", FarmHelperConfig.pingEveryoneOnPestsDetectionNumberExceeded);
+            if (FarmHelperConfig.sendNotificationIfPestsDetectionNumberExceeded)
+                FailsafeUtils.getInstance().sendNotification("There " + (pestsCount > 1 ? "are" : "is") + " currently " + pestsCount + " " + (pestsCount > 1 ? "pests" : "pest") + " in the garden!", TrayIcon.MessageType.WARNING);
         }
-        if (pestsCount == 0) {
-            infestedPlots.clear();
-        }
+        if (pestsCount == 0) infestedPlots.clear();
     }
 
     private int checkPestHunterBonusTabList(String cleanedLine) {
@@ -489,20 +504,13 @@ public class GameStateHandler {
         return -1;
     }
 
-    private void checkInfestedPlotsTabList(String cleanedLine) {
-        if (cleanedLine.contains("Plots:")) {
+    private void checkInfestedPlotsTabList(String line) {
+        infestedPlots.clear();
+        for (String token : line.substring("Plots:".length()).strip().split("[,\\s]+")) {
             try {
-                String[] split = cleanedLine.trim().split(" ");
-                infestedPlots.clear();
-                for (int i = 1; i < split.length; i++) {
-                    try {
-                        infestedPlots.add(Integer.parseInt(split[i].replace(",", "")));
-                    } catch (Exception ignored) {
-                    }
-                }
-            } catch (Exception ignored) {
-                infestedPlots.clear();
-            }
+                int plot = Integer.parseInt(token);
+                if (plot >= 0 && plot <= 24 && !infestedPlots.contains(plot)) infestedPlots.add(plot);
+            } catch (NumberFormatException ignored) { }
         }
     }
 
@@ -646,14 +654,11 @@ public class GameStateHandler {
     @SubscribeEvent
     public void onReceivePacket(ReceivePacketEvent event) {
         if (mc.level == null || mc.player == null) return;
-        if (event.packet instanceof ClientboundContainerSetSlotPacket) {
-            ClientboundContainerSetSlotPacket packet = (ClientboundContainerSetSlotPacket) event.packet;
-            ItemStack slot = packet.getItem();
-            if ((slot == null || slot.isEmpty()) || slot.getItem() == null || (!(slot.getItem() instanceof HoeItem) && !(slot.getItem() instanceof AxeItem)))
-                return;
-            long cult = getCultivating(slot);
-            if (cult == 0) return;
-            currentCultivating.put(slot.getDisplayName().getString(), cult);
+        for (var change : event.inventoryChanges) {
+            ItemStack stack = change.after();
+            if (!InventoryUtils.isFarmingTool(stack)) continue;
+            long cultivating = getCultivating(stack);
+            if (cultivating > 0) currentCultivating.put(InventoryUtils.toolCounterKey(stack), cultivating);
         }
     }
 
@@ -687,7 +692,7 @@ public class GameStateHandler {
     }
 
     private boolean dyIsRest() {
-        return dy < 0.05 || dy <= 0.079 && dy >= 0.078; // weird calculation of motionY being -0.0784000015258789 while resting at block and 0.0 is while flying for some reason
+        return mc.player != null && (mc.player.onGround() || dy < 0.05);
     }
 
     public boolean playerIsInFlowingWater(int y) {
@@ -788,19 +793,9 @@ public class GameStateHandler {
     private HashMap<String, Long> currentCultivating = new HashMap<>();
 
     public Long getCultivating(ItemStack item) {
-        if (mc.level == null || mc.player == null)
-            return 0L;
-        CompoundTag tag = item.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
-        if (tag == null)
-            return 0L;
-        if (tag.contains("ExtraAttributes")) {
-            CompoundTag ea = tag.getCompoundOrEmpty("ExtraAttributes");
-
-            if (ea.contains("farmed_cultivating") || ea.contains("mined_crops")) {
-                return (long) ea.getLongOr("farmed_cultivating", 0L);
-            }
-        }
-        return 0L;
+        CompoundTag attributes = InventoryUtils.skyblockData(item);
+        // Tool levelable_exp is XP, not harvested crop count.
+        return attributes.getLongOr("farmed_cultivating", attributes.getLongOr("mined_crops", 0L));
     }
 
     @Getter

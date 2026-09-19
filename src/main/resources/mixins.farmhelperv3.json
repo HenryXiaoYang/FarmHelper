@@ -31,7 +31,9 @@
     "render.MixinModelBiped",
     "client.EntityTurnMixin",
     "client.KeyboardMixin",
-    "client.LivingEntityMixin"
+    "client.LivingEntityMixin",
+    "network.PacketUtilsMixin",
+    "network.ClientCommonPacketListenerMixin"
   ],
   "required": true,
   "injectors": {

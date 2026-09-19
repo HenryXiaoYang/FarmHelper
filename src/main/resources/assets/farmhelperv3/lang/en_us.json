@@ -1,0 +1,9 @@
+{
+  "farmhelperv3.settings.unsaved": "Unsaved settings",
+  "farmhelperv3.settings.unsaved_message": "Save your changes before leaving?",
+  "farmhelperv3.settings.invalid_message": "Some values are invalid. Keep editing to correct them, or discard your changes.",
+  "farmhelperv3.settings.save_exit": "Save and exit",
+  "farmhelperv3.settings.apply_back": "Apply and go back",
+  "farmhelperv3.settings.discard_exit": "Discard changes",
+  "farmhelperv3.settings.keep_editing": "Keep editing"
+}

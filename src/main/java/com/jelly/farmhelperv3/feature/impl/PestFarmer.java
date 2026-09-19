@@ -504,7 +504,7 @@ public class PestFarmer implements IFeature {
                     if (isTimerRunning()) return;
 
                     ItemStack stack = mc.player.getMainHandItem();
-                    if ((stack == null || stack.isEmpty()) || !stack.getDisplayName().getString().contains("Squeaky Mousemat")) {
+                    if ((stack == null || stack.isEmpty()) || !stack.getHoverName().getString().contains("Squeaky Mousemat")) {
                         setState(ReturnState.HOLD_AND_USE_MOUSEMAT, 300);
                         if (!InventoryUtils.holdItem("Squeaky Mousemat")) {
                             LogUtils.sendError("Could Not Find Squeaky Mousemat In Inventory. Reverting to Rotation.");

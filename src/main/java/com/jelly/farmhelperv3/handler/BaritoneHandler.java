@@ -70,12 +70,14 @@ public class BaritoneHandler {
 
     public static void walkToBlockPos(BlockPos blockPos) {
         PathingCommand pathingCommand = new PathingCommand(new GoalBlock(blockPos), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
+        BaritoneEventListener.pathEvent = PathEvent.CALC_STARTED;
         BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(pathingCommand.goal);
         pathing = true;
     }
 
     public static void walkCloserToBlockPos(BlockPos blockPos, int range) {
         PathingCommand pathingCommand = new PathingCommand(new GoalNear(blockPos, range), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
+        BaritoneEventListener.pathEvent = PathEvent.CALC_STARTED;
         BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(pathingCommand.goal);
         pathing = true;
     }

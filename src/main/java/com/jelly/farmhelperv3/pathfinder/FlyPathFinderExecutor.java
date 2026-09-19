@@ -286,7 +286,7 @@ public class FlyPathFinderExecutor {
         }
 
         if (state == State.DECELERATING) {
-            if (Math.abs(mc.player.getDeltaMovement().x) <= 0.05 && Math.abs(mc.player.getDeltaMovement().z) <= 0.05 && mc.player.getDeltaMovement().y == (mc.player.onGround() ? -0.0784000015258789 : 0)) {
+            if (Math.abs(mc.player.getDeltaMovement().x) <= 0.05 && Math.abs(mc.player.getDeltaMovement().z) <= 0.05 && (mc.player.onGround() || Math.abs(mc.player.getDeltaMovement().y) < 0.003)) {
                 stop();
             }
             return;
@@ -490,17 +490,7 @@ public class FlyPathFinderExecutor {
     }
 
     private Vec3 predictStoppingPosition() {
-        PlayerSimulation playerSimulation = new PlayerSimulation(mc.level);
-        playerSimulation.copy(mc.player);
-        playerSimulation.isFlying = true;
-        playerSimulation.rotationYaw = mc.player.getYRot();
-        for (int i = 0; i < 30; i++) {
-            playerSimulation.onLivingUpdate();
-            if (Math.abs(playerSimulation.motionX) < 0.01D && Math.abs(playerSimulation.motionZ) < 0.01D) {
-                break;
-            }
-        }
-        return new Vec3(playerSimulation.posX, playerSimulation.posY, playerSimulation.posZ);
+        return PlayerSimulation.predictFlyingStop(mc.player);
     }
 
     private Block getBlockUnder() {
@@ -571,9 +561,9 @@ public class FlyPathFinderExecutor {
     private final Clock flyDelay = new Clock();
 
     private boolean fly(Vec3 next, Vec3 current) {
-        if (mc.player.getDeltaMovement().y < -0.0784000015258789 || BlockUtils.getRelativeBlock(0, 0, 0).defaultBlockState().liquid())
+        if ((!mc.player.onGround() && mc.player.getDeltaMovement().y < -0.003) || mc.player.isInWater() || mc.player.isInLava())
             if (flyDelay.passed()) {
-                if (!mc.player.getAbilities().flying) {
+                if (mc.player.getAbilities().mayfly && !mc.player.getAbilities().flying) {
                     mc.player.getAbilities().flying = true;
                     mc.player.onUpdateAbilities();
                 }
@@ -609,19 +599,16 @@ public class FlyPathFinderExecutor {
         if (!isRunning()) return;
         if (FarmHelperConfig.streamerMode) return;
         EntityRenderDispatcher renderManager = mc.getEntityRenderDispatcher();
-        Vec3 current = mc.player.position();
+        Vec3 current = mc.player.getPosition(event.partialTicks);
         Vec3 next = getNext(copyPath);
         AABB currenNode = new AABB(current.x - 0.05, current.y - 0.05, current.z - 0.05, current.x + 0.05, current.y + 0.05, current.z + 0.05);
         AABB nextBB = new AABB(next.x - 0.05, next.y - 0.05, next.z - 0.05, next.x + 0.05, next.y + 0.05, next.z + 0.05);
         EntityRenderDispatcher rendermanager = Minecraft.getInstance().getEntityRenderDispatcher();
-        currenNode = currenNode.move(-Minecraft.getInstance().gameRenderer.getMainCamera().position().x, -Minecraft.getInstance().gameRenderer.getMainCamera().position().y, -Minecraft.getInstance().gameRenderer.getMainCamera().position().z);
-        nextBB = nextBB.move(-Minecraft.getInstance().gameRenderer.getMainCamera().position().x, -Minecraft.getInstance().gameRenderer.getMainCamera().position().y, -Minecraft.getInstance().gameRenderer.getMainCamera().position().z);
         RenderUtils.drawBox(currenNode, Color.GREEN);
         RenderUtils.drawBox(nextBB, Color.BLUE);
         for (int i = 0; i < copyPath.size() - 1; i++) {
             Vec3 from = new Vec3(copyPath.get(i).x, copyPath.get(i).y, copyPath.get(i).z);
             Vec3 to = new Vec3(copyPath.get(i + 1).x, copyPath.get(i + 1).y, copyPath.get(i + 1).z);
-            from = from.add(-Minecraft.getInstance().gameRenderer.getMainCamera().position().x, -Minecraft.getInstance().gameRenderer.getMainCamera().position().y, -Minecraft.getInstance().gameRenderer.getMainCamera().position().z);
             RenderUtils.drawTracer(from, to, Color.RED);
         }
         if (!FarmHelperConfig.debugMode) return;
@@ -641,9 +628,9 @@ public class FlyPathFinderExecutor {
     public void drawCollidingBlock(HitResult mop, EntityRenderDispatcher renderManager, Vec3 target) {
         if (mop != null && mop.getType() == HitResult.Type.BLOCK && BlockUtils.hasCollision(((net.minecraft.world.phys.BlockHitResult) mop).getBlockPos())) {
             BlockPos blockPos = ((net.minecraft.world.phys.BlockHitResult) mop).getBlockPos();
-            RenderUtils.drawBox(new AABB(blockPos.getX(), blockPos.getY(), blockPos.getZ(), blockPos.getX() + 1, blockPos.getY() + 1, blockPos.getZ() + 1).move(-Minecraft.getInstance().gameRenderer.getMainCamera().position().x, -Minecraft.getInstance().gameRenderer.getMainCamera().position().y, -Minecraft.getInstance().gameRenderer.getMainCamera().position().z), blockedColor);
+            RenderUtils.drawBox(new AABB(blockPos.getX(), blockPos.getY(), blockPos.getZ(), blockPos.getX() + 1, blockPos.getY() + 1, blockPos.getZ() + 1), blockedColor);
         } else {
-            RenderUtils.drawBox(new AABB(target.x, target.y, target.z, target.x + 0.1, target.y + 0.1, target.z + 0.1).move(-Minecraft.getInstance().gameRenderer.getMainCamera().position().x, -Minecraft.getInstance().gameRenderer.getMainCamera().position().y, -Minecraft.getInstance().gameRenderer.getMainCamera().position().z), freeColor);
+            RenderUtils.drawBox(new AABB(target.x, target.y, target.z, target.x + 0.1, target.y + 0.1, target.z + 0.1), freeColor);
         }
     }
 

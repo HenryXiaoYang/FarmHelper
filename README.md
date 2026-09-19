@@ -1,8 +1,10 @@
 # FarmHelper V3
 
-Fabric port of [JellyLabScripts/FarmHelper V2](https://github.com/JellyLabScripts/FarmHelper), targeting **Minecraft Java 26.1.2** and **Java 25**. Mod ID: `farmhelperv3`; version: `3.0.0`.
+**Author: HenryXiaoYang**
 
-The farming, auxiliary automation, failsafe, HUD, pathfinding, and remote-control modules are included. This build passes compilation and local startup/UI checks; live Hypixel feature parity has **not** been verified. See [porting and verification notes](PORTING.md).
+FarmHelper V3 continues development of the original [FarmHelper V2 by JellyLabScripts](https://github.com/JellyLabScripts/FarmHelper), bringing it to Fabric for **Minecraft Java 26.1.2** and **Java 25**. Mod ID: `farmhelperv3`; version: `3.0.0`.
+
+The farming, auxiliary automation, failsafe, HUD, pathfinding, and remote-control modules are included. This build passes compilation, automated local UI checks, and isolated-world compatibility checks; live Hypixel feature parity has **not** been verified. See [porting and verification notes](PORTING.md).
 
 ## Installation
 
@@ -14,11 +16,11 @@ Install these into a Minecraft **26.1.2** Fabric instance using Java 25:
 - `FarmHelperV3-3.0.0.jar` from `build/libs`.
 - [Mod Menu **18.0.1**](https://modrinth.com/mod/modmenu) to open **Mods → FarmHelper V3 → Configure**.
 
-Mod Menu is optional. `/fh`, `/farmhelper`, and the default **F** key also open settings in a world. The default macro toggle is **grave/backtick**. OneConfig and the old Forge JDA dependency are no longer required; Discord/WebSocket libraries are bundled.
+Mod Menu is optional. `/fh`, `/farmhelper`, and the default **F** key also open settings in a world. The default macro toggle is **grave/backtick**. OneConfig and the old Forge JDA dependency are no longer required; integration libraries are bundled.
 
 ## Settings and migration
 
-Settings live in `.minecraft/config/farmhelperv3/config.json`. The settings screen supports search, dependent controls, HUD pages, colors, and keyboard/mouse bindings. Backspace/Delete clears a binding.
+Settings live in `.minecraft/config/farmhelperv3/config.json`. The settings screen uses a category sidebar and a scrolling detail panel, with inline descriptions, search across categories, dependent controls, HUD pages, colors, and keyboard/mouse bindings. Settings are organized into 13 main categories, with startup controls before detailed options. Done saves; Cancel or Escape asks whether to save, discard, or keep editing when there are unsaved changes. Unchanged screens close directly. The same protection covers nested pages and multiline drafts. Backspace/Delete clears a binding.
 
 On first V3 startup, the mod looks for V2 settings in the default OneConfig profile, the legacy OneConfig config directory, and `config/farmhelper/config.json`. It copies a backup to `config/farmhelperv3/v2-config.backup.json`, converts keycodes/colors/HUD positions, and preserves the originals. Existing V3 settings take precedence.
 
@@ -26,16 +28,18 @@ Rewarp points and plot data move to `config/farmhelperv3`; statistics and custom
 
 ## Building
 
+Keep the mod version at **3.0.0** unless the user explicitly requests a version change.
+
 ```sh
 ./gradlew build
 ```
 
-Output: `build/libs/FarmHelperV3-3.0.0.jar`. The build runs the plain-Java regression checks; `./gradlew portChecks` runs them separately. Use `./gradlew runClient -PsmokeTest` for an isolated development instance under `build/smoke-run`, with remote controls/analytics disabled and mixin auditing enabled. Add `-PwithoutModMenu` to check the optional integration.
+Output: `build/libs/FarmHelperV3-3.0.0.jar`. The build runs the plain-Java regression checks; `./gradlew portChecks` runs them separately. Use `./gradlew runClient -PsmokeTest` for an isolated development instance under `build/smoke-run`, with remote controls/analytics disabled, mixin auditing, and automatic settings/menu regression checks. With an isolated world named `New World` already present in that instance, add `-PcheckWorld` to exercise inventory packets, flight, crop states, block prediction, and rotation thresholds, then exit automatically. Test code is excluded from the release jar. Add `-PwithoutModMenu` to check the optional integration.
 
-CI builds and uploads an artifact without publishing releases or sending Discord messages.
+CI builds and uploads the mod artifact.
 
 ## Attribution and license
 
-Original FarmHelper V2 by JellyLabScripts and its contributors. V3 adapts the code and resources for Fabric 26.1.2 and replaces the legacy platform integration and settings UI.
+FarmHelper V3 is developed and maintained by **HenryXiaoYang**. It adapts the original FarmHelper V2 by JellyLabScripts and its contributors for Fabric 26.1.2, replacing the legacy platform integration and settings UI.
 
 The project remains licensed under [CC BY-NC-SA 4.0](LICENSE). Bundled third-party libraries retain their own licenses.

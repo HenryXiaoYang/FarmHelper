@@ -20,7 +20,7 @@ public class LagDetector implements IFeature {
     private long lastReceivedPacketTime = -1;
     private Vec3 lastPacketPosition = null;
     private final FifoQueue<Float> tpsHistory = new FifoQueue<>(20);
-    private float timeJoined = 0;
+    private long timeJoined = 0;
 
     public static LagDetector getInstance() {
         if (instance == null) {
@@ -90,13 +90,16 @@ public class LagDetector implements IFeature {
     }
 
     public long getLaggingTime() {
-        return System.currentTimeMillis() - lastReceivedPacketTime;
+        return lastReceivedPacketTime < 0 ? 0 : System.currentTimeMillis() - lastReceivedPacketTime;
     }
 
     @SubscribeEvent
     public void onGameJoined(PlayerEvent.PlayerLoggedInEvent event) {
         timeJoined = System.currentTimeMillis();
         tpsHistory.clear();
+        lastReceivedPacketTime = -1;
+        lastPacketPosition = null;
+        recentlyLagged.reset();
     }
 
     @SubscribeEvent
@@ -105,7 +108,7 @@ public class LagDetector implements IFeature {
         if (!(event.packet instanceof ClientboundSetTimePacket)) return;
         long now = System.currentTimeMillis();
         float timeElapsed = (now - lastReceivedPacketTime) / 1000F;
-        tpsHistory.add(clamp(20F / timeElapsed, 0F, 20F));
+        if (lastReceivedPacketTime >= 0 && timeElapsed > 0) tpsHistory.add(clamp(20F / timeElapsed, 0F, 20F));
         lastReceivedPacketTime = now;
         lastPacketPosition = mc.player.position();
     }

@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MixinSoundManager {
     @Inject(method = "calculateVolume(Lnet/minecraft/client/resources/sounds/SoundInstance;)F", at = @At("RETURN"), cancellable = true)
     private void farmhelper$mute(SoundInstance sound, CallbackInfoReturnable<Float> cir) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         if (MacroHandler.getInstance().isMacroToggled() && FarmHelperConfig.muteTheGame && !AudioManager.getInstance().isSoundPlaying()
                 && !FailsafeManager.getInstance().getChooseEmergencyDelay().isScheduled() && FailsafeManager.getInstance().triggeredFailsafe.isEmpty()) cir.setReturnValue(0f);
     }

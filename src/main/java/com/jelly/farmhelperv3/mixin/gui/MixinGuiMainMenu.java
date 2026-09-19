@@ -1,7 +1,6 @@
 package com.jelly.farmhelperv3.mixin.gui;
 
-import com.jelly.farmhelperv3.config.FarmHelperConfig;
-import com.jelly.farmhelperv3.gui.*;
+import com.jelly.farmhelperv3.gui.AutoUpdaterGUI;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(TitleScreen.class)
 public class MixinGuiMainMenu {
     @Inject(method = "tick", at = @At("RETURN"))
-    private void farmhelper$welcome(CallbackInfo ci) {
-        if (Boolean.getBoolean("farmhelperv3.smokeTest")) return;
-        if (!FarmHelperConfig.shownWelcomeGUI2) { WelcomeGUI.showGUI(); return; }
+    private void farmhelper$checkUpdates(CallbackInfo ci) {
+        Minecraft client = Minecraft.getInstance();
+        if (Boolean.getBoolean("farmhelperv3.smokeTest") || !com.jelly.farmhelperv3.FarmHelperClient.ready || client.screen != (Object) this || client.getOverlay() != null) return;
         if (!AutoUpdaterGUI.checkedForUpdates) {
             AutoUpdaterGUI.checkedForUpdates = true;
             Thread.ofVirtual().start(() -> {

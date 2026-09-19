@@ -1,5 +1,7 @@
 package com.jelly.farmhelperv3.feature.impl;
 
+import com.jelly.farmhelperv3.util.InventoryUtils;
+
 import net.minecraft.ChatFormatting;
 import com.jelly.farmhelperv3.util.Tasks;
 import com.google.gson.JsonArray;
@@ -21,7 +23,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.util.StringUtil;
 import com.jelly.farmhelperv3.event.Events.ClientChatReceivedEvent;
 import com.jelly.farmhelperv3.event.Events.EventPriority;
@@ -225,17 +226,17 @@ public class ProfitCalculator implements IFeature {
         double profit = 0;
         ItemStack currentItem = mc.player.getMainHandItem();
         if ((currentItem != null && !currentItem.isEmpty()) && currentItem.getItem() != null && FarmHelperConfig.profitCalculatorCultivatingEnchant) {
-            long cultivatingCounter = GameStateHandler.getInstance().getCurrentCultivating().getOrDefault(currentItem.getDisplayName().getString(), 0L);
-            long previousCultivatingCounter = previousCultivating.getOrDefault(currentItem.getDisplayName().getString(), 0L);
+            long cultivatingCounter = GameStateHandler.getInstance().getCurrentCultivating().getOrDefault(InventoryUtils.toolCounterKey(currentItem), 0L);
+            long previousCultivatingCounter = previousCultivating.getOrDefault(InventoryUtils.toolCounterKey(currentItem), 0L);
             if (previousCultivatingCounter == 0) {
-                previousCultivating.put(currentItem.getDisplayName().getString(), cultivatingCounter);
+                previousCultivating.put(InventoryUtils.toolCounterKey(currentItem), cultivatingCounter);
                 previousCultivatingCounter = cultivatingCounter;
             }
             if (cultivatingCounter > previousCultivatingCounter) {
                 long diff = cultivatingCounter - previousCultivatingCounter;
                 cropsToCount.stream().filter(crop -> crop.localizedName.equals(MacroHandler.getInstance().getCrop().getLocalizedName())).findFirst().ifPresent(item -> item.currentAmount += diff);
-                previousCultivating.put(currentItem.getDisplayName().getString(), cultivatingCounter);
             }
+            previousCultivating.put(InventoryUtils.toolCounterKey(currentItem), cultivatingCounter);
         }
 
         for (BazaarItem item : cropsToCount) {
@@ -288,7 +289,7 @@ public class ProfitCalculator implements IFeature {
         if (!GameStateHandler.getInstance().inGarden()) return;
 
         ItemStack currentItem = mc.player.getMainHandItem();
-        if ((currentItem != null && !currentItem.isEmpty()) && ChatFormatting.stripFormatting(currentItem.getDisplayName().getString()).startsWith("Bountiful")) {
+        if ((currentItem != null && !currentItem.isEmpty()) && ChatFormatting.stripFormatting(currentItem.getHoverName().getString()).startsWith("Bountiful")) {
             if (GameStateHandler.getInstance().getCurrentPurse() == previousCurrentPurse) return;
             if (GameStateHandler.getInstance().getPreviousPurse() == 0) return;
             double value = GameStateHandler.getInstance().getCurrentPurse() - GameStateHandler.getInstance().getPreviousPurse();
@@ -305,32 +306,17 @@ public class ProfitCalculator implements IFeature {
         if (!GameStateHandler.getInstance().inGarden()) return;
         if (mc.screen != null) return;
 
-        if (event.packet instanceof ClientboundContainerSetSlotPacket) {
-            ClientboundContainerSetSlotPacket packet = (ClientboundContainerSetSlotPacket) event.packet;
-
-            int slotNumber = packet.getSlot();
-            if (slotNumber < 0 || slotNumber > 44) return;
-            Slot currentSlot = mc.player.inventoryMenu.getSlot(slotNumber);
-            ItemStack heldItem = mc.player.getMainHandItem();
-            ItemStack newItem = packet.getItem();
-            if (FarmHelperConfig.profitCalculatorCultivatingEnchant && (newItem != null && !newItem.isEmpty()) && (heldItem != null && !heldItem.isEmpty()) && ChatFormatting.stripFormatting(newItem.getDisplayName().getString()).equals(MacroHandler.getInstance().getCrop().getLocalizedName()) && GameStateHandler.getInstance().getCurrentCultivating().getOrDefault(heldItem.getDisplayName().getString(), 0L) > 0) {
-                return;
-            }
-            ItemStack oldItem = currentSlot.getItem();
-            if ((newItem == null || newItem.isEmpty()) || newItem.has(net.minecraft.core.component.DataComponents.TOOL) || newItem.has(net.minecraft.core.component.DataComponents.EQUIPPABLE) || newItem.getItem() instanceof HoeItem)
-                return;
-
-            if ((oldItem == null || oldItem.isEmpty()) || !oldItem.getItem().equals(newItem.getItem())) {
-                int newStackSize = newItem.getCount();
-                String name = ChatFormatting.stripFormatting(newItem.getDisplayName().getString());
-                addDroppedItem(name, newStackSize);
-            } else if (oldItem.getItem().equals(newItem.getItem())) {
-                int newStackSize = newItem.getCount();
-                int oldStackSize = oldItem.getCount();
-                String name = ChatFormatting.stripFormatting(newItem.getDisplayName().getString());
-                int amount = Math.max((newStackSize - oldStackSize), 0);
-                addDroppedItem(name, amount);
-            }
+        for (var change : event.inventoryChanges) {
+            if (change.snapshot() || change.inventoryIndex() >= 36) continue;
+            ItemStack newItem = change.after(), oldItem = change.before(), heldItem = mc.player.getMainHandItem();
+            if (newItem.isEmpty() || InventoryUtils.isFarmingTool(newItem) || newItem.has(net.minecraft.core.component.DataComponents.EQUIPPABLE)) continue;
+            if (FarmHelperConfig.profitCalculatorCultivatingEnchant && !heldItem.isEmpty()
+                    && InventoryUtils.isFarmingTool(heldItem) && GameStateHandler.getInstance().getCurrentCultivating().getOrDefault(InventoryUtils.toolCounterKey(heldItem), 0L) > 0
+                    && newItem.getHoverName().getString().equals(MacroHandler.getInstance().getCrop().getLocalizedName())) continue;
+            boolean same = !oldItem.isEmpty() && InventoryUtils.skyblockId(oldItem).equals(InventoryUtils.skyblockId(newItem))
+                    && oldItem.getItem() == newItem.getItem() && oldItem.getHoverName().getString().equals(newItem.getHoverName().getString());
+            int gained = newItem.getCount() - (same ? oldItem.getCount() : 0);
+            if (gained > 0) addDroppedItem(ChatFormatting.stripFormatting(newItem.getHoverName().getString()), gained);
         }
     }
 

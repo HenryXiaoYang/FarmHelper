@@ -147,9 +147,9 @@ public class RotationFailsafe extends Failsafe {
     }
 
     private boolean shouldTriggerCheck(double newYaw, double newPitch) {
-        double yawDiff = Math.abs(newYaw - mc.player.getYRot()) % 360;
+        double yawDiff = Math.abs(net.minecraft.util.Mth.wrapDegrees(newYaw - mc.player.getYRot()));
         double pitchDiff = Math.abs(newPitch - mc.player.getXRot()) % 360;
-        double yawThreshold = FarmHelperConfig.pitchSensitivity;
+        double yawThreshold = FarmHelperConfig.yawSensitivity;
         double pitchThreshold = FarmHelperConfig.pitchSensitivity;
         if (yawDiff >= yawThreshold || pitchDiff >= pitchThreshold) {
             LogUtils.sendDebug("[Failsafe] Rotation detected! Yaw diff: " + yawDiff + ", Pitch diff: " + pitchDiff);

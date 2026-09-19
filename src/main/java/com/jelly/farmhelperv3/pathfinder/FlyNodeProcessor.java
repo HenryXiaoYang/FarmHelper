@@ -67,7 +67,7 @@ public final class FlyNodeProcessor {
     private boolean free(BlockPos pos) {
         for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) for (int z = 0; z < width; z++) {
             BlockPos test = pos.offset(x, y, z);
-            if (!level.hasChunkAt(test) || !BlockUtils.isFree(test.getX(), test.getY(), test.getZ(), level)) return false;
+            if (level.isOutsideBuildHeight(test) || !level.hasChunkAt(test) || !BlockUtils.isFree(test.getX(), test.getY(), test.getZ(), level)) return false;
         }
         return true;
     }

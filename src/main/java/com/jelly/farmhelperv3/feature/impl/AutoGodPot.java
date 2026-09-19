@@ -389,7 +389,7 @@ public class AutoGodPot implements IFeature {
                 for (Slot slot : mc.player.containerMenu.slots) {
                     if (!slot.hasItem()) continue;
 
-                    String itemName = ChatFormatting.stripFormatting(slot.getItem().getDisplayName().getString());
+                    String itemName = ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString());
                     if (itemName.contains("God Potion") && !badItems.contains(slot.index)) {
                         ItemStack itemLore = slot.getItem();
                         if (InventoryUtils.getItemLore(itemLore).contains("Status: Sold!")) {
@@ -755,7 +755,7 @@ public class AutoGodPot implements IFeature {
                 for (Slot slot : mc.player.containerMenu.slots) {
                     if (!slot.hasItem()) continue;
 
-                    String itemName = ChatFormatting.stripFormatting(slot.getItem().getDisplayName().getString());
+                    String itemName = ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString());
                     if (itemName.contains("God Potion")) {
                         InventoryUtils.clickContainerSlot(slot.index, InventoryUtils.ClickType.LEFT, InventoryUtils.ClickMode.QUICK_MOVE);
                         setBackpackState(BackpackState.END);

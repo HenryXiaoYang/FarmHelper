@@ -634,9 +634,9 @@ public class BlockUtils {
     public static int cropAroundAmount(BlockPos blockPos) {
         AABB axisAlignedBB = getBlocksAround(blockPos);
         int count = 0;
-        for (int x = (int) axisAlignedBB.minX; x < axisAlignedBB.maxX; x++) {
-            for (int y = (int) axisAlignedBB.minY; y < axisAlignedBB.maxY; y++) {
-                for (int z = (int) axisAlignedBB.minZ; z < axisAlignedBB.maxZ; z++) {
+        for (int x = (int) Math.floor(axisAlignedBB.minX); x < axisAlignedBB.maxX; x++) {
+            for (int y = (int) Math.floor(axisAlignedBB.minY); y < axisAlignedBB.maxY; y++) {
+                for (int z = (int) Math.floor(axisAlignedBB.minZ); z < axisAlignedBB.maxZ; z++) {
                     BlockPos blockPos1 = BlockPos.containing(x, y, z);
                     Block block = mc.level.getBlockState(blockPos1).getBlock();
                     if (CropUtils.isCropReady(block, blockPos1)) {
@@ -662,9 +662,9 @@ public class BlockUtils {
 
     public static List<BlockPos> getBlocksInBB(AABB bb) {
         List<BlockPos> blocks = new ArrayList<>();
-        for (int x = (int) bb.minX; x < bb.maxX; x++) {
-            for (int y = (int) bb.minY; y < bb.maxY; y++) {
-                for (int z = (int) bb.minZ; z < bb.maxZ; z++) {
+        for (int x = (int) Math.floor(bb.minX); x < bb.maxX; x++) {
+            for (int y = (int) Math.floor(bb.minY); y < bb.maxY; y++) {
+                for (int z = (int) Math.floor(bb.minZ); z < bb.maxZ; z++) {
                     blocks.add(BlockPos.containing(x, y, z));
                 }
             }

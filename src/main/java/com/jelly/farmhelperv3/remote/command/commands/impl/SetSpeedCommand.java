@@ -40,12 +40,6 @@ public class SetSpeedCommand extends ClientCommand {
         } else if (InventoryUtils.getRancherBootSpeed() == speed) {
             data.addProperty("error", "Your Rancher's boots are already at " + speed + " speed.");
         } else {
-            for (int i = 36; i < 44; i++) {
-                if (ClientCommand.mc.player.inventoryMenu.getSlot(i).getItem() == null) {
-                    LogUtils.sendDebug("Found free slot: " + i);
-                    break;
-                }
-            }
             try {
                 enabled = true;
                 currentState = State.START;
@@ -71,7 +65,7 @@ public class SetSpeedCommand extends ClientCommand {
                 enabled = false;
                 break;
             case START:
-                if (ClientCommand.mc.player.inventoryMenu.getSlot(8) == null || !ClientCommand.mc.player.inventoryMenu.getSlot(8).getItem().getDisplayName().getString().contains("Rancher's Boots")) {
+                if (InventoryUtils.getRancherBootSpeed() < 0) {
                     disableWithError("You don't wear Rancher's Boots! Disabling...");
                     break;
                 }

@@ -16,7 +16,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.core.*;
 import net.minecraft.world.phys.*;
 import net.minecraft.network.chat.*;
@@ -296,26 +295,15 @@ public class PlotCleaningHelper implements IFeature {
     }
 
     private void breakBlock(BlockPos blockPos) {
-        Direction enumFacing = BlockUtils.calculateEnumfacing(new Vec3(blockPos).add(randomVec()));
-        if (enumFacing != null) {
-            mc.player.connection.send(new ServerboundPlayerActionPacket(
-                    ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
-                    blockPos,
-                    enumFacing
-            ));
-        } else {
-            mc.player.connection.send(new ServerboundPlayerActionPacket(
-                    ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
-                    blockPos,
-                    mc.player.getDirection().getOpposite()
-            ));
-        }
+        if (mc.player == null || mc.gameMode == null) return;
+        Direction face = BlockUtils.calculateEnumfacing(new Vec3(blockPos).add(randomVec()));
+        mc.gameMode.continueDestroyBlock(blockPos, face != null ? face : mc.player.getDirection().getOpposite());
     }
 
     private int getRadius() {
         ItemStack currentItem = mc.player.getMainHandItem();
         if ((currentItem == null || currentItem.isEmpty())) return 0;
-        String displayName = currentItem.getDisplayName().getString();
+        String displayName = currentItem.getHoverName().getString();
         if (displayName.contains("Sam") && displayName.contains("Scythe")) {
             return 1;
         } else if (displayName.contains("Garden") && displayName.contains("Scythe")) {
@@ -367,13 +355,13 @@ public class PlotCleaningHelper implements IFeature {
         } else {
             ItemStack currentItem = mc.player.getMainHandItem();
             if ((currentItem == null || currentItem.isEmpty())) return false;
-            if (Arrays.stream(tools).noneMatch(currentItem.getDisplayName().getString()::contains)) return false;
+            if (Arrays.stream(tools).noneMatch(currentItem.getHoverName().getString()::contains)) return false;
             if (checkIfScythe(block)) {
-                return currentItem.getDisplayName().getString().contains("Scythe");
+                return currentItem.getHoverName().getString().contains("Scythe");
             } else if (checkIfTreecap(block)) {
-                return currentItem.getDisplayName().getString().contains("Treecapitator") || (currentItem.getDisplayName().getString().contains("Axe") && !currentItem.getDisplayName().getString().contains("Pick"));
+                return currentItem.getHoverName().getString().contains("Treecapitator") || (currentItem.getHoverName().getString().contains("Axe") && !currentItem.getHoverName().getString().contains("Pick"));
             } else if (checkIfPickaxe(block)) {
-                return currentItem.getDisplayName().getString().contains("Pickaxe") || currentItem.getDisplayName().getString().contains("Stonk");
+                return currentItem.getHoverName().getString().contains("Pickaxe") || currentItem.getHoverName().getString().contains("Stonk");
             }
         }
         return false;

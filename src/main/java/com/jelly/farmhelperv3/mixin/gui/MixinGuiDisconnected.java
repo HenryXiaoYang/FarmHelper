@@ -40,6 +40,7 @@ public abstract class MixinGuiDisconnected extends net.minecraft.client.gui.scre
 
     @Inject(method = "init", at = @At("RETURN"))
     public void initGui(CallbackInfo ci) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         multilineMessage = new ArrayList<>(java.util.List.of(details.reason().getString().split("\n")));
         if (multilineMessage.get(0).contains("banned")) {
             FailsafeManager.getInstance().stopFailsafes();
@@ -49,7 +50,7 @@ public abstract class MixinGuiDisconnected extends net.minecraft.client.gui.scre
     @Override
     public void extractRenderState(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
-        if (farmHelperV3$isBanned) return;
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready || multilineMessage.isEmpty() || farmHelperV3$isBanned) return;
 
         if (multilineMessage.get(0).contains("banned")) {
             farmHelperV3$isBanned = true;
@@ -104,6 +105,7 @@ public abstract class MixinGuiDisconnected extends net.minecraft.client.gui.scre
     @Inject(method = {"lambda$init$3", "lambda$init$4"}, at = @At("HEAD"))
     protected void actionPerformed(Button button, CallbackInfo ci) {
         {
+            if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
             if (AutoReconnect.getInstance().isRunning()) {
                 AutoReconnect.getInstance().stop();
             }

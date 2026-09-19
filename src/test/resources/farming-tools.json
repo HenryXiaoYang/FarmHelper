@@ -1,0 +1,221 @@
+{
+  "source": "https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO/tree/9dce36fde21a40e7c0e2679412626e315fee28fc/items",
+  "tools": [
+    {
+      "id": "CACTUS_KNIFE",
+      "name": "§aCactus Knife Mk. I",
+      "material": "minecraft:iron_sword",
+      "crop": "CACTUS"
+    },
+    {
+      "id": "CACTUS_KNIFE_2",
+      "name": "§9Cactus Knife Mk. II",
+      "material": "minecraft:iron_sword",
+      "crop": "CACTUS"
+    },
+    {
+      "id": "CACTUS_KNIFE_3",
+      "name": "§5Cactus Knife Mk. III",
+      "material": "minecraft:iron_sword",
+      "crop": "CACTUS"
+    },
+    {
+      "id": "COCO_CHOPPER",
+      "name": "§aCocoa Chopper Mk. I",
+      "material": "minecraft:golden_axe",
+      "crop": "COCOA_BEANS"
+    },
+    {
+      "id": "COCO_CHOPPER_2",
+      "name": "§9Cocoa Chopper Mk. II",
+      "material": "minecraft:golden_axe",
+      "crop": "COCOA_BEANS"
+    },
+    {
+      "id": "COCO_CHOPPER_3",
+      "name": "§5Cocoa Chopper Mk. III",
+      "material": "minecraft:golden_axe",
+      "crop": "COCOA_BEANS"
+    },
+    {
+      "id": "FUNGI_CUTTER",
+      "name": "§aFungi Cutter Mk. I",
+      "material": "minecraft:iron_hoe",
+      "crop": "MUSHROOM"
+    },
+    {
+      "id": "FUNGI_CUTTER_2",
+      "name": "§9Fungi Cutter Mk. II",
+      "material": "minecraft:iron_hoe",
+      "crop": "MUSHROOM"
+    },
+    {
+      "id": "FUNGI_CUTTER_3",
+      "name": "§5Fungi Cutter Mk. III",
+      "material": "minecraft:iron_hoe",
+      "crop": "MUSHROOM"
+    },
+    {
+      "id": "MELON_DICER",
+      "name": "§aMelon Dicer Mk. I",
+      "material": "minecraft:melon",
+      "crop": "MELON"
+    },
+    {
+      "id": "MELON_DICER_2",
+      "name": "§9Melon Dicer Mk. II",
+      "material": "minecraft:golden_axe",
+      "crop": "MELON"
+    },
+    {
+      "id": "MELON_DICER_3",
+      "name": "§5Melon Dicer Mk. III",
+      "material": "minecraft:golden_axe",
+      "crop": "MELON"
+    },
+    {
+      "id": "PUMPKIN_DICER",
+      "name": "§aPumpkin Dicer Mk. I",
+      "material": "minecraft:pumpkin",
+      "crop": "PUMPKIN"
+    },
+    {
+      "id": "PUMPKIN_DICER_2",
+      "name": "§9Pumpkin Dicer Mk. II",
+      "material": "minecraft:golden_axe",
+      "crop": "PUMPKIN"
+    },
+    {
+      "id": "PUMPKIN_DICER_3",
+      "name": "§5Pumpkin Dicer Mk. III",
+      "material": "minecraft:golden_axe",
+      "crop": "PUMPKIN"
+    },
+    {
+      "id": "THEORETICAL_HOE_CANE_1",
+      "name": "§aTuring Sugar Cane Cutter Mk. I",
+      "material": "minecraft:iron_hoe",
+      "crop": "SUGAR_CANE"
+    },
+    {
+      "id": "THEORETICAL_HOE_CANE_2",
+      "name": "§9Turing Sugar Cane Cutter Mk. II",
+      "material": "minecraft:iron_hoe",
+      "crop": "SUGAR_CANE"
+    },
+    {
+      "id": "THEORETICAL_HOE_CANE_3",
+      "name": "§5Turing Sugar Cane Cutter Mk. III",
+      "material": "minecraft:iron_hoe",
+      "crop": "SUGAR_CANE"
+    },
+    {
+      "id": "THEORETICAL_HOE_CARROT_1",
+      "name": "§aGauss Carrot Shovel Mk. I",
+      "material": "minecraft:iron_hoe",
+      "crop": "CARROT"
+    },
+    {
+      "id": "THEORETICAL_HOE_CARROT_2",
+      "name": "§9Gauss Carrot Shovel Mk. II",
+      "material": "minecraft:iron_hoe",
+      "crop": "CARROT"
+    },
+    {
+      "id": "THEORETICAL_HOE_CARROT_3",
+      "name": "§5Gauss Carrot Shovel Mk. III",
+      "material": "minecraft:iron_hoe",
+      "crop": "CARROT"
+    },
+    {
+      "id": "THEORETICAL_HOE_POTATO_1",
+      "name": "§aPythagorean Potato Shovel Mk. I",
+      "material": "minecraft:iron_hoe",
+      "crop": "POTATO"
+    },
+    {
+      "id": "THEORETICAL_HOE_POTATO_2",
+      "name": "§9Pythagorean Potato Shovel Mk. II",
+      "material": "minecraft:iron_hoe",
+      "crop": "POTATO"
+    },
+    {
+      "id": "THEORETICAL_HOE_POTATO_3",
+      "name": "§5Pythagorean Potato Shovel Mk. III",
+      "material": "minecraft:iron_hoe",
+      "crop": "POTATO"
+    },
+    {
+      "id": "THEORETICAL_HOE_SUNFLOWER_1",
+      "name": "§aEclipse Sickle Mk. I",
+      "material": "minecraft:iron_hoe",
+      "crop": "SUNFLOWER"
+    },
+    {
+      "id": "THEORETICAL_HOE_SUNFLOWER_2",
+      "name": "§9Eclipse Sickle Mk. II",
+      "material": "minecraft:iron_hoe",
+      "crop": "SUNFLOWER"
+    },
+    {
+      "id": "THEORETICAL_HOE_SUNFLOWER_3",
+      "name": "§5Eclipse Sickle Mk. III",
+      "material": "minecraft:iron_hoe",
+      "crop": "SUNFLOWER"
+    },
+    {
+      "id": "THEORETICAL_HOE_WARTS_1",
+      "name": "§aNewton Nether Wart Cutter Mk. I",
+      "material": "minecraft:iron_hoe",
+      "crop": "NETHER_WART"
+    },
+    {
+      "id": "THEORETICAL_HOE_WARTS_2",
+      "name": "§9Newton Nether Wart Cutter Mk. II",
+      "material": "minecraft:iron_hoe",
+      "crop": "NETHER_WART"
+    },
+    {
+      "id": "THEORETICAL_HOE_WARTS_3",
+      "name": "§5Newton Nether Wart Cutter Mk. III",
+      "material": "minecraft:iron_hoe",
+      "crop": "NETHER_WART"
+    },
+    {
+      "id": "THEORETICAL_HOE_WHEAT_1",
+      "name": "§aEuclid's Wheat Sickle Mk. I",
+      "material": "minecraft:iron_hoe",
+      "crop": "WHEAT"
+    },
+    {
+      "id": "THEORETICAL_HOE_WHEAT_2",
+      "name": "§9Euclid's Wheat Sickle Mk. II",
+      "material": "minecraft:iron_hoe",
+      "crop": "WHEAT"
+    },
+    {
+      "id": "THEORETICAL_HOE_WHEAT_3",
+      "name": "§5Euclid's Wheat Sickle Mk. III",
+      "material": "minecraft:iron_hoe",
+      "crop": "WHEAT"
+    },
+    {
+      "id": "THEORETICAL_HOE_WILD_ROSE_1",
+      "name": "§aWild Rose Cutter Mk. I",
+      "material": "minecraft:iron_hoe",
+      "crop": "ROSE"
+    },
+    {
+      "id": "THEORETICAL_HOE_WILD_ROSE_2",
+      "name": "§9Wild Rose Cutter Mk. II",
+      "material": "minecraft:iron_hoe",
+      "crop": "ROSE"
+    },
+    {
+      "id": "THEORETICAL_HOE_WILD_ROSE_3",
+      "name": "§5Wild Rose Cutter Mk. III",
+      "material": "minecraft:iron_hoe",
+      "crop": "ROSE"
+    }
+  ]
+}

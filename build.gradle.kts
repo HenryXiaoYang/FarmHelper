@@ -68,8 +68,17 @@ bundled.resolvedConfiguration.resolvedArtifacts.forEach { artifact ->
 }
 
 if (providers.gradleProperty("smokeTest").isPresent) {
+    loom.mods {
+        register("farmhelperv3") { sourceSet(sourceSets.main.get()) }
+        register("farmhelperv3_checks") { sourceSet(sourceSets.test.get()) }
+    }
+    tasks.named("runClient") { dependsOn(tasks.testClasses) }
     loom.runs.named("client") {
+        source(sourceSets.test.get())
         vmArg("-Dfarmhelperv3.smokeTest=true")
+        if (providers.gradleProperty("settingsPreview").isPresent) vmArg("-Dfarmhelperv3.settingsPreview=true")
+        if (providers.gradleProperty("settingsPreview").orNull == "confirmation") vmArg("-Dfarmhelperv3.confirmationPreview=true")
+        if (providers.gradleProperty("checkWorld").isPresent) vmArg("-Dfarmhelperv3.checkWorld=true")
         runDir("build/smoke-run")
     }
 }

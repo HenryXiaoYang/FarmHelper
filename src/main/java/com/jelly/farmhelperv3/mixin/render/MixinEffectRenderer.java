@@ -14,6 +14,7 @@ public class MixinEffectRenderer {
 
     @Inject(method = "addDestroyBlockEffect", at = @At("HEAD"), cancellable = true)
     private void addBlockDestroyEffects(BlockPos pos, BlockState state, CallbackInfo ci) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         if (MacroHandler.getInstance().isMacroToggled()) {
             ci.cancel();
         }

@@ -74,6 +74,7 @@ public class KnockbackFailsafe extends Failsafe {
         }
         if (((ClientboundSetEntityMotionPacket) event.packet).id() != mc.player.getId())
             return;
+        // Preserve the V2 configuration unit (velocity * 8000); the modern packet supplies blocks/tick.
         if (((ClientboundSetEntityMotionPacket) event.packet).movement().y * 8000 < FarmHelperConfig.verticalKnockbackThreshold)
             return;
 

@@ -202,88 +202,17 @@ public class PlayerUtils {
     }
 
     public static int getFarmingTool(FarmHelperConfig.CropEnum crop, boolean withError, boolean anyHoe) {
-        if (crop == null) return withError ? -1 : 0;
-        for (int i = 36; i < 44; i++) {
-            if (mc.player == null || mc.player.inventoryMenu.slots == null || mc.player.inventoryMenu.slots.get(i).getItem() == null)
-                continue;
-            CompoundTag tag = mc.player.inventoryMenu.slots.get(i).getItem().getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
-            if (tag != null && tag.contains("ExtraAttributes")) {
-                CompoundTag extraAttributes = tag.getCompoundOrEmpty("ExtraAttributes");
-                if (extraAttributes.contains("id")) {
-                    String name = extraAttributes.getStringOr("id", "");
-                    if (name == null)
-                        continue;
-                    if (anyHoe) {
-                        if (name.contains("HOE") || name.contains("DICER") || name.contains("CHOPPER") || name.contains("FUNGI") || name.contains("DAEDALUS_AXE") || name.contains("KNIFE")) {
-                            return i - 36;
-                        }
-                        continue;
-                    }
-                    switch (crop) {
-                        case NETHER_WART:
-                            if (name.contains("HOE_WARTS_3") || name.contains("HOE_WARTS_2") || name.contains("HOE_WARTS")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case CARROT:
-                            if (name.contains("HOE_CARROT_3") || name.contains("HOE_CARROT_2") || name.contains("HOE_CARROT")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case WHEAT:
-                            if (name.contains("HOE_WHEAT_3") || name.contains("HOE_WHEAT_2") || name.contains("HOE_WHEAT")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case POTATO:
-                            if (name.contains("HOE_POTATO_3") || name.contains("HOE_POTATO_2") || name.contains("HOE_POTATO")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case SUGAR_CANE:
-                            if (name.contains("HOE_CANE_3") || name.contains("HOE_CANE_2") || name.contains("HOE_CANE")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case CACTUS:
-                            if (name.contains("CACTUS_KNIFE")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case MUSHROOM:
-                            if (name.contains("FUNGI_CUTTER") || name.contains("DAEDALUS_AXE")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case PUMPKIN_MELON_UNKNOWN:
-                            if (name.contains("_DICER")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case MELON:
-                            if (name.contains("MELON_DICER_3") || name.contains("MELON_DICER_2") || name.contains("MELON_DICER")) {
-                                return i - 36;
-                            }
-                        case PUMPKIN:
-                            if (name.contains("PUMPKIN_DICER_3") || name.contains("PUMPKIN_DICER_2") || name.contains("PUMPKIN_DICER")) {
-                                return i - 36;
-                            }
-                            continue;
-                        case COCOA_BEANS:
-                            if (name.contains("COCO_CHOPPER")) {
-                                return i - 36;
-                            }
-                    }
-                }
-            }
+        if (crop == null || mc.player == null) return withError ? -1 : 0;
+        var inventory = mc.player.getInventory();
+        var requested = anyHoe ? FarmHelperConfig.CropEnum.NONE : crop;
+        int selected = inventory.getSelectedSlot();
+        int best = selected;
+        int bestPriority = InventoryUtils.farmingToolPriority(inventory.getItem(selected), requested);
+        for (int slot = 0; slot < 9; slot++) {
+            int priority = InventoryUtils.farmingToolPriority(inventory.getItem(slot), requested);
+            if (priority > bestPriority) { best = slot; bestPriority = priority; }
         }
-
-        int gardeningHoe = InventoryUtils.getSlotIdOfItemInHotbar("Gardening Hoe", "Gardening Axe");
-        if (gardeningHoe != -1) {
-            return gardeningHoe;
-        }
-
-        return withError ? -1 : 0;
+        return bestPriority > 0 ? best : withError ? -1 : 0;
     }
 
     public static boolean isRewarpLocationSet() {

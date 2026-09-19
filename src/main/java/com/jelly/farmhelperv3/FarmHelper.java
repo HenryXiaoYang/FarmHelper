@@ -98,11 +98,9 @@ public final class FarmHelper implements ClientModInitializer {
             FarmHelperConfig.debugHUD.render(graphics);
             Events.BUS.post(new RenderGameOverlayEvent.Post(graphics, delta.getGameTimeDeltaPartialTick(false)));
         });
-        net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents.END_EXTRACTION.register(context -> {
-            try (var collection = mc.levelRenderer.collectPerFrameGizmos()) {
-                Events.BUS.post(new RenderWorldLastEvent(context.deltaTracker().getGameTimeDeltaPartialTick(false)));
-            }
-        });
+        net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents.END_EXTRACTION.register(RenderUtils::extractWorld);
+        net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(RenderUtils::renderWorld);
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> RenderUtils.close());
         AtomicBoolean pending = new AtomicBoolean();
         timer.scheduleAtFixedRate(() -> {
             if (pending.compareAndSet(false, true)) mc.execute(() -> {

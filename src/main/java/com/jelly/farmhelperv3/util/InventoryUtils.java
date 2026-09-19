@@ -1,5 +1,7 @@
 package com.jelly.farmhelperv3.util;
 
+import com.jelly.farmhelperv3.config.FarmHelperConfig.CropEnum;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -23,6 +25,80 @@ import static java.lang.Integer.parseInt;
 
 public class InventoryUtils {
     private static final Minecraft mc = Minecraft.getInstance();
+
+    /** Modern Hypixel uses the custom_data root; older clients wrapped it in ExtraAttributes. */
+    public static CompoundTag skyblockData(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return new CompoundTag();
+        CompoundTag data = stack.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
+        return data.getStringOr("id", "").isEmpty() ? data.getCompoundOrEmpty("ExtraAttributes") : data;
+    }
+    public static String skyblockId(ItemStack stack) { return skyblockData(stack).getStringOr("id", ""); }
+    public static String toolCounterKey(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return "";
+        var attributes = skyblockData(stack);
+        String uuid = attributes.getStringOr("uuid", "");
+        return uuid.isEmpty() ? attributes.getStringOr("id", "") + ":" + stack.getHoverName().getString() : uuid;
+    }
+    public static boolean isFarmingTool(ItemStack stack) {
+        return farmingToolPriority(stack, CropEnum.NONE) > 0;
+    }
+    /** 2 = crop-specific, 1 = general-purpose/legacy fallback, 0 = unsuitable. */
+    public static int farmingToolPriority(ItemStack stack, CropEnum crop) {
+        String id = skyblockId(stack).replaceFirst("_[123]$", "");
+        var target = switch (id) {
+            case "THEORETICAL_HOE_WHEAT" -> CropEnum.WHEAT;
+            case "THEORETICAL_HOE_CARROT" -> CropEnum.CARROT;
+            case "THEORETICAL_HOE_POTATO" -> CropEnum.POTATO;
+            case "THEORETICAL_HOE_WARTS" -> CropEnum.NETHER_WART;
+            case "THEORETICAL_HOE_CANE" -> CropEnum.SUGAR_CANE;
+            case "THEORETICAL_HOE_SUNFLOWER" -> CropEnum.SUNFLOWER;
+            case "THEORETICAL_HOE_WILD_ROSE" -> CropEnum.ROSE;
+            case "CACTUS_KNIFE" -> CropEnum.CACTUS;
+            case "FUNGI_CUTTER" -> CropEnum.MUSHROOM;
+            case "MELON_DICER" -> CropEnum.MELON;
+            case "PUMPKIN_DICER" -> CropEnum.PUMPKIN;
+            case "COCO_CHOPPER" -> CropEnum.COCOA_BEANS;
+            default -> null;
+        };
+        if (target != null) {
+            if (crop == CropEnum.NONE) return 1;
+            if (target == crop || target == CropEnum.SUNFLOWER && crop == CropEnum.MOONFLOWER
+                    || crop == CropEnum.PUMPKIN_MELON_UNKNOWN && (target == CropEnum.PUMPKIN || target == CropEnum.MELON)) return 2;
+            return 0;
+        }
+        return switch (id) {
+            case "BASIC_GARDENING_HOE", "ADVANCED_GARDENING_HOE", "BASIC_GARDENING_AXE", "ADVANCED_GARDENING_AXE", "ROOKIE_HOE", "ROOKIE_FARMING_AXE" -> 1;
+            case "DAEDALUS_AXE" -> crop == CropEnum.MUSHROOM || crop == CropEnum.NONE ? 1 : 0;
+            default -> 0;
+        };
+    }
+    public static int playerInventoryIndex(net.minecraft.world.inventory.AbstractContainerMenu menu, net.minecraft.world.entity.player.Inventory inventory, int slotId) {
+        if (slotId < 0 || slotId >= menu.slots.size()) return -1;
+        Slot slot = menu.getSlot(slotId);
+        return slot.container == inventory ? slot.getContainerSlot() : -1;
+    }
+    public static List<com.jelly.farmhelperv3.event.InventoryChange> inventoryChanges(net.minecraft.network.protocol.Packet<?> packet) {
+        if (mc.player == null) return List.of();
+        var inventory = mc.player.getInventory();
+        var changes = new ArrayList<com.jelly.farmhelperv3.event.InventoryChange>();
+        if (packet instanceof net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket update) {
+            if (update.slot() >= 0 && update.slot() < inventory.getContainerSize())
+                changes.add(new com.jelly.farmhelperv3.event.InventoryChange(update.slot(), inventory.getItem(update.slot()).copy(), update.contents().copy(), false));
+        } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket update) {
+            var menu = update.getContainerId() == 0 ? mc.player.inventoryMenu : mc.player.containerMenu;
+            if (menu.containerId != update.getContainerId()) return List.of();
+            int index = playerInventoryIndex(menu, inventory, update.getSlot());
+            if (index >= 0) changes.add(new com.jelly.farmhelperv3.event.InventoryChange(index, inventory.getItem(index).copy(), update.getItem().copy(), false));
+        } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket update) {
+            var menu = update.containerId() == 0 ? mc.player.inventoryMenu : mc.player.containerMenu;
+            if (menu.containerId != update.containerId()) return List.of();
+            for (int slot = 0; slot < Math.min(menu.slots.size(), update.items().size()); slot++) {
+                int index = playerInventoryIndex(menu, inventory, slot);
+                if (index >= 0) changes.add(new com.jelly.farmhelperv3.event.InventoryChange(index, inventory.getItem(index).copy(), update.items().get(slot).copy(), true));
+            }
+        }
+        return List.copyOf(changes);
+    }
 
     public static String skullTexture(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return "";
@@ -132,21 +208,10 @@ public class InventoryUtils {
     }
 
     public static int getSlotOfItemByHypixelIdInInventory(String hypixelId, boolean contains) {
+        if (mc.player == null) return -1;
         for (Slot slot : mc.player.inventoryMenu.slots) {
-            if (slot.hasItem()) {
-                CompoundTag tag = slot.getItem().getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
-                if (tag != null && tag.contains("ExtraAttributes")) {
-                    CompoundTag extraAttributes = tag.getCompoundOrEmpty("ExtraAttributes");
-                    if (extraAttributes.contains("id")) {
-                        String id = extraAttributes.getStringOr("id", "");
-                        if (contains && id.contains(hypixelId)) {
-                            return slot.index;
-                        } else if (id.equals(hypixelId)) {
-                            return slot.index;
-                        }
-                    }
-                }
-            }
+            String id = skyblockId(slot.getItem());
+            if (!id.isEmpty() && (contains ? id.contains(hypixelId) : id.equals(hypixelId))) return slot.index;
         }
         return -1;
     }
@@ -183,7 +248,7 @@ public class InventoryUtils {
 
     public static ArrayList<Slot> getIndexesOfItemsFromInventory(Predicate<Slot> predicate) {
         ArrayList<Slot> indexes = new ArrayList<>();
-        for (int i = 0; i < 36; i++) {
+        for (int i = 9; i < 45; i++) {
             Slot slot = mc.player.inventoryMenu.getSlot(i);
             if (slot != null && slot.hasItem()) {
                 if (predicate.test(slot)) {
@@ -254,7 +319,7 @@ public class InventoryUtils {
     }
 
     public static List<String> getLoreOfItemInContainer(int slot) {
-        if (slot == -1) return new ArrayList<>();
+        if (mc.player == null || slot < 0 || slot >= mc.player.containerMenu.slots.size()) return new ArrayList<>();
         ItemStack itemStack = mc.player.containerMenu.getSlot(slot).getItem();
         if ((itemStack == null || itemStack.isEmpty())) return new ArrayList<>();
         return getItemLore(itemStack);
@@ -262,7 +327,8 @@ public class InventoryUtils {
 
     public static int getAmountOfItemInInventory(String item) {
         int amount = 0;
-        for (Slot slot : mc.player.inventoryMenu.slots) {
+        if (mc.player == null) return 0;
+        for (Slot slot : mc.player.inventoryMenu.slots.subList(9, 45)) {
             if (slot.hasItem()) {
                 String itemName = ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString());
                 if (itemName.equals(item)) {
@@ -299,7 +365,7 @@ public class InventoryUtils {
             } else {
                 String itemName = ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString());
                 if (itemName.equals(item))
-                    freeSpace += maxStackSize - slot.getItem().getCount();
+                    freeSpace += Math.max(0, slot.getItem().getMaxStackSize() - slot.getItem().getCount());
             }
             if (freeSpace + currentAmount >= amount)
                 return true;
@@ -309,7 +375,7 @@ public class InventoryUtils {
 
     public static int getRancherBootSpeed() {
         if (mc.player == null) return -1;
-        ItemStack boots = mc.player.inventoryMenu.getSlot(8).getItem();
+        ItemStack boots = mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET);
         Matcher matcher = Pattern.compile("Current Speed Cap: (\\d+)").matcher(String.join("\n", getItemLore(boots)));
         return matcher.find() ? Integer.parseInt(matcher.group(1)) : -1;
     }

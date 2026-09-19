@@ -178,7 +178,7 @@ public class TeleportFailsafe extends Failsafe {
             final double lastReceivedPacketDistance = currentPlayerPos.distanceTo(LagDetector.getInstance().getLastPacketPosition());
             // blocks per tick
             final double playerMovementSpeed = mc.player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
-            final int ticksSinceLastPacket = (int) Math.ceil(LagDetector.getInstance().getTimeSinceLastTick() / 50D);
+            final int ticksSinceLastPacket = (int) Math.ceil(LagDetector.getInstance().getTimeSinceLastTick() * 20D);
             final double estimatedMovement = playerMovementSpeed * ticksSinceLastPacket;
             if (lastReceivedPacketDistance > 7.5D && Math.abs(lastReceivedPacketDistance - estimatedMovement) < FarmHelperConfig.teleportLagTolerance)
                 return;

@@ -180,7 +180,7 @@ public class AutoWardrobe implements IFeature {
                 if (slot != null && slot.hasItem()) {
                     ItemStack stack = slot.getItem();
                     // remove this to make it unequip armor (click the same slot)
-                    if (stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && !stack.getDisplayName().getString().contains("Equipped") && !stack.getDisplayName().getString().contains("Locked")) {
+                    if (stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && !stack.getHoverName().getString().contains("Equipped") && !stack.getHoverName().getString().contains("Locked")) {
                         InventoryUtils.clickContainerSlot(35 + (swapTo - 1) % 9 + 1, ClickType.LEFT, ClickMode.PICKUP);
                     }
                 }
@@ -228,7 +228,7 @@ public class AutoWardrobe implements IFeature {
                     slot = mc.player.containerMenu.getSlot(invStart);
                     if (slot.hasItem()) {
                         ItemStack stack = slot.getItem();
-                        if (stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && equipmentsToSwapTo.removeIf(it -> stack.getDisplayName().getString().contains(it.trim()))) {
+                        if (stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && equipmentsToSwapTo.removeIf(it -> stack.getHoverName().getString().contains(it.trim()))) {
                             InventoryUtils.clickContainerSlot(invStart, ClickType.LEFT, ClickMode.PICKUP);
                             timer.schedule(FarmHelperConfig.pestFarmerEquipmentClickDelay);
                             return;

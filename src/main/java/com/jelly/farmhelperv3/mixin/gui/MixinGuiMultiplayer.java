@@ -14,6 +14,7 @@ public abstract class MixinGuiMultiplayer extends Screen {
     protected MixinGuiMultiplayer(Component title) { super(title); }
     @Inject(method = "init", at = @At("RETURN"))
     private void farmhelper$proxyButton(CallbackInfo ci) {
+        if (!com.jelly.farmhelperv3.FarmHelperClient.ready) return;
         addRenderableWidget(Button.builder(Component.literal("FH V3 — Proxy"), b -> minecraft.setScreen(new ProxyManagerGUI(this))).bounds(8, 8, 130, 20).build());
     }
 }

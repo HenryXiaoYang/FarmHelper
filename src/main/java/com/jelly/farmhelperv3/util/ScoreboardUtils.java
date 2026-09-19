@@ -26,22 +26,22 @@ public final class ScoreboardUtils {
                 .sorted(Comparator.comparingInt(PlayerScoreEntry::value).reversed().thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER))
                 .limit(15).forEach(score -> {
                     Component label = score.display() == null ? Component.literal(score.owner()) : score.display();
-                    String text = PlayerTeam.formatNameForTeam(board.getPlayersTeam(score.owner()), label).getString();
+                    String text = TextUtils.formatted(PlayerTeam.formatNameForTeam(board.getPlayersTeam(score.owner()), label));
                     if (text.contains("☀")) lines.add("Day");
                     if (text.contains("☽")) lines.add("Night");
                     lines.add(text);
                 });
         List<String> clean = lines.stream().map(ScoreboardUtils::cleanSB).toList();
-        if (!clean.equals(cachedCleanScoreboardLines)) {
+        if (!lines.equals(cachedScoreboardLines)) {
             for (int i = 0; i < clean.size(); i++) if (i >= cachedCleanScoreboardLines.size() || !clean.get(i).equals(cachedCleanScoreboardLines.get(i))) Events.BUS.post(new UpdateScoreboardLineEvent(clean.get(i)));
             cachedScoreboardLines = List.copyOf(lines); cachedCleanScoreboardLines = clean;
             Events.BUS.post(new UpdateScoreboardListEvent(lines, clean, System.currentTimeMillis()));
         }
     }
-    @SubscribeEvent public void unload(WorldEvent.Unload event) { cachedScoreboardLines = List.of(); cachedCleanScoreboardLines = List.of(); }
+    @SubscribeEvent public void unload(WorldEvent.Unload event) { cachedScoreboardLines = List.of(); cachedCleanScoreboardLines = List.of(); TablistUtils.setCachedTablist(List.of()); }
     private static String cleanSB(String text) {
         StringBuilder cleaned = new StringBuilder();
-        ChatFormatting.stripFormatting(text).chars().filter(c -> c >= 32 && c < 127 || c == 'ൠ').forEach(c -> cleaned.append((char)c));
+        ChatFormatting.stripFormatting(text).replace('\ue07f', 'ൠ').chars().filter(c -> c >= 32 && c < 127 || c == 'ൠ').forEach(c -> cleaned.append((char)c));
         return cleaned.toString();
     }
 }

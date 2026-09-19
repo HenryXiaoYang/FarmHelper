@@ -5,6 +5,7 @@
 - Java 25, Gradle 9.5.0, unobfuscated Fabric Loom 1.17.21, Fabric Loader 0.19.5, and Fabric API 0.155.3+26.1.2.
 - Mod identity, packages, assets, metadata, and artifact use `farmhelperv3` / FarmHelper V3. Forge, LaunchWrapper, core transformers, legacy remapping, and OneConfig are removed.
 - Fabric lifecycle/message/render events and targeted mixins feed the existing feature state machines. Internal event dispatch preserves priority and cancellation, and avoids duplicate registrations.
+- Startup opens the Minecraft main menu directly, with no FarmHelper welcome or typed confirmation. Authentication retries and ban-report authentication run in the background to keep menu input responsive.
 - Native settings and HUD rendering replace OneConfig. Mod Menu opens the same settings screen as `/fh` and F. V2 settings are copied and converted; originals remain intact.
 - Modern item components, container input, sign editing, packet payloads, relative position corrections, GLFW input/window controls, and client-thread game actions replace their 1.8.9 equivalents.
 - Walking uses Baritone's public goal API. Flying retains the six-neighbor search and existing movement/follow/smoothing logic, with a cancellable client-thread search budget of 2 ms per tick, a 10-second timeout, and a 65,536-node ceiling. It never uses `Thread.stop()` or reads the live world on a worker thread.
@@ -27,8 +28,9 @@ No legacy source set is excluded from the build to obtain a passing compile. Exi
 
 ## Checks performed
 
-- `./gradlew build` and `./gradlew portChecks`: event priority, cancellation, duplicate registration, unregistration; legacy keyboard/mouse codes; color/alpha/chroma conversion; HUD anchor conversion; non-mutating migration; malformed-color rejection; incompatible update rejection.
+- `./gradlew build` and `./gradlew portChecks`: all 104 string-based boolean setting dependencies resolve to public boolean fields (including the renamed Anti Stuck switch); stalled background I/O does not block the scheduler; event priority, cancellation, duplicate registration, unregistration; legacy keyboard/mouse codes; color/alpha/chroma conversion; HUD anchor conversion; non-mutating migration; malformed-color rejection; incompatible update rejection.
 - Minecraft 26.1.2 development client launched on macOS arm64 / JDK 25. Mixin audit force-loads remaining targets without mod injection errors.
+- Verified direct startup to the main menu without a FarmHelper welcome screen; clicked Options and Mods successfully.
 - Opened Mod Menu, selected FarmHelper V3, and opened Configure.
 - Created and entered an isolated local world; rendered the status HUD.
 - Launched without Mod Menu, opened settings using both F and `/fh`, searched settings, changed a HUD preference, and verified the saved JSON value.
@@ -39,3 +41,88 @@ No legacy source set is excluded from the build to obtain a passing compile. Exi
 ## Still requiring live validation
 
 A successful local client launch does not establish Hypixel feature parity. No authenticated Hypixel session, real farming route, economic transaction, Discord bot connection, authenticated proxy, analytics exchange, or released V3 update was exercised. Windows/Linux-specific window, notification, and audio behavior was not tested. Treat this as a port build pending those checks.
+
+## Compatibility repair (2026-09-19)
+
+The earlier compile-only review missed behavioral differences. This repair was checked against the generated **26.1.2 client sources**, including `PacketUtils`, `PacketProcessor`, `ClientPacketListener`, `InventoryMenu`, `MultiPlayerGameMode`, `LivingEntity`, and `Player`. Toolchain requirements were cross-checked with [Fabric's official 26.1 migration notes](https://www.fabricmc.net/2026/03/14/261.html).
+
+| Area | Repair | Evidence |
+| --- | --- | --- |
+| Initialization / input | Thin bootstrap checks the Baritone API before loading the heavy entrypoint. Input, render, proxy and event hooks stay inactive after failed initialization; Mod Menu displays the initialization error. GUI key events still work without a player. | Native MouseHandler clicks on Options, multiplayer Back and disconnected Back with `ready` true and false; disconnected-screen key press/release check. This simulates inactive hooks, not Lunar's entire loader. |
+| Settings | Remove welcome/confirmation; fix Anti Stuck field dependency and an uninitialized text default. | All 104 string dependencies checked; 590 settings evaluated; 662 Next clicks, including extra clicks at the last page, through native screens. |
+| Packet order | Dispatch on return from the client-thread packet handoff, immediately before vanilla applies changes. Bundle children are dispatched individually. Disconnect has its own handoff because vanilla does not use PacketUtils for it. | Synthetic single and bundled packets: exactly one callback per child and the old inventory still visible. Separate network-thread scheduling check. |
+| Inventories / items | Map menu slots through the actual Slot container/index; support direct inventory, slot and full-content packets. Ignore chest-only and stale-menu slots; mark full snapshots to avoid false income. Include the ninth hotbar slot; query boots by equipment slot. Use undecorated hover names. | Direct slot 8, inventory-menu slot 44, chest slot 62, chest-only slots, stale menu IDs and full 36-slot snapshots. |
+| Counters / text | Read modern custom_data; preserve same-name tool identity using UUID, with ID/name fallback; support mined_crops counters. Preserve styled visitor colors and native tab order/listing, handle removals/team changes, clear stale tab data, and parse NPC chat without requiring embedded section codes. | Styled-component regression; same-name UUID distinction; custom_data counter fallback. Actual Hypixel text/menu samples remain unverified. |
+| Movement | Replace the general 1.8.9 simulator with a flying-only stopping predictor using current collision shapes, combined horizontal cutoff, vertical cutoff, drag and flight permission. Use ground contact instead of exact legacy gravity velocity. Bound path search to world height and floor negative block coordinates. | Six native Player.travel comparisons: horizontal, vertical/diagonal and low diagonal speed, each with/without a solid obstacle. Negative-coordinate bounds check. |
+| Breaking / crop shapes | Plot cleaning uses native destruction. Pingless cactus changes destroy progress inside vanilla's prediction scope; no AIR mutation before prediction. Emit successful destruction once. Disabled hitbox options preserve vanilla shapes; crop subclasses use their own age property. | Cactus START packet has a positive prediction sequence, block becomes AIR, exactly one click/destruction event. Iterate all registered CropBlock states, including beetroot. |
+| Failsafe numbers / state | Wrap yaw difference; use separate yaw and pitch thresholds; use long timestamps and reset lag samples on join; convert seconds to ticks correctly. Preserve the documented V2 knockback configuration unit. Reset stale Baritone calculation status for new requests. | Rotation wraparound and independent threshold checks; source review for time and knockback units. |
+
+Commands used:
+
+```sh
+./gradlew build
+./gradlew runClient -PsmokeTest -PcheckWorld
+./gradlew runClient -PsmokeTest -PcheckWorld -PwithoutModMenu
+```
+
+`ClientChecks` is a test-only Fabric entrypoint. It uses the isolated `build/smoke-run/saves/New World`, restores its temporary inventory/block/player changes, and shuts down normally after the world checks. It is not included in the release jar. The development world must exist before using `-PcheckWorld`.
+
+These checks repair and verify the shared compatibility paths; they do not establish every live Hypixel state-machine branch. The stopping predictor handles no-input ability flight and returns control on landing; it is not a general ground/fluid simulator, and cobwebs, unusual block effects, mounts and live server corrections are outside the comparisons above. Original movement recordings still replay inputs under the current game's physics, so their exact V2 spatial trajectories are not promised. Live Garden routes, server menus, economic transactions and external integrations still need authenticated validation as listed above.
+
+## Settings layout (2026-09-19)
+
+- Replace Previous/Next pagination with a category sidebar and independent native scrolling lists. The right pane groups settings by subsection, shows inline descriptions and compact values, and uses a dark translucent background. Search spans the current page's categories.
+- Preserve Mod Menu, F and `/fh` entrypoints, dependencies, key binding capture, numeric validation, nested HUD/color pages and masked credentials. Full values remain available in tooltips and narration.
+- Done saves the root screen; nested Done returns to its parent. Cancel/Escape restores the edited settings, including key bindings and nested changes. Invalid drafts survive resizing and prevent saving until corrected; Cancel still exits.
+- Client regression traverses 590 settings and 45 category groups (including nested pages), exercises scrolling and empty search results, and checks cancellation, a 320×240 resize with invalid input, keybinding rollback and Done persistence. Viewed the actual game window to check layout, clipping and contrast.
+- `./gradlew runClient -PsmokeTest -PsettingsPreview` leaves the new screen open after the UI checks for visual inspection.
+
+## Farming tool detection repair (version remains 3.0.0)
+
+- Read Hypixel data from the modern `minecraft:custom_data` root, falling back to the legacy `ExtraAttributes` wrapper. ID, UUID, inventory searches and cultivating counters share this reader. Verified the root schema against [Skyblocker's ItemUtils](https://github.com/SkyblockerMod/Skyblocker/blob/master/src/main/java/de/hysky/skyblocker/utils/ItemUtils.java).
+- Match crop-specific tool families by internal ID, including all Mk. I–III tiers, Eclipse (Sunflower and Moonflower), Wild Rose and the existing crop tools. Display-name changes such as Hoe → Sickle/Cutter do not affect detection. Cactus prediction also uses the ID. Prefer a crop-specific tool over a general gardening tool, retain the held tool on equal matches, and inspect all nine hotbar slots.
+- General farming tools remain fallbacks; tilling hoes, mathematical blueprints, ordinary axes and the consumable Farming Toolkit are not mistaken for harvesting tools. Tools withdrawn from the toolkit are matched by their normal item ID. Tool XP (`levelable_exp`) is never counted as harvested crops.
+- Regression fixtures capture 36 current tool definitions from [NEU item repository commit 9dce36f](https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO/tree/9dce36fde21a40e7c0e2679412626e315fee28fc/items); exercise each with modern and legacy data, plus hotbar priority, both Eclipse crops, Wild Rose, UUID/counters and negative examples. These are local fixture checks, not an authenticated Hypixel session.
+
+## Continuous harvesting with a released cursor (version remains 3.0.0)
+
+- Reproduced the user's single-crop stop with `autoUngrabMouse` enabled and Fast Break disabled: the first queued click harvested a carrot, but the second held-attack tick did nothing. Vanilla `Minecraft.handleKeybinds` gates `continueAttack` on `MouseHandler.isMouseGrabbed()`.
+- Relax only that call site's capture check while the macro is toggled and FarmHelper has intentionally released the cursor. Keep vanilla's held-key, screen, instant-attack and item-use checks. Do not change the low-BPS failsafe or globally pretend the cursor is captured.
+- The regression failed before the fix on crop 2 and passed afterward on three consecutive crops. It also verifies that releasing attack or opening settings stops harvesting and that ordinary cursor release keeps vanilla behavior. The check runs through the real `handleKeybinds` input path in the isolated local world.
+
+## Freelook harvesting transition (version remains 3.0.0)
+
+- Reproduced a stop when entering Freelook from FarmHelper's released-cursor state. Vanilla `MouseHandler.grabMouse()` sets `missTime = 10000`; outside macOS it also resets held keys to their physical states.
+- `UngrabMouse.regrabMouse()` now preserves the existing cooldown and held automation keys when intentionally recapturing during an active macro with no screen open. It does not globally clear attack cooldowns or change menu capture behavior.
+- The client regression failed before the fix at “Continue harvesting after entering Freelook”. After the fix, two enter/rotate/exit cycles harvest continuously, the camera turns without changing player rotation, and release/menu stop checks still pass. The synchronous test restores its temporary window-focus fixture after running.
+
+## World overlays: ESP, tracers, plot/path markers (version remains 3.0.0)
+
+- All RenderUtils world APIs now accept absolute world coordinates. Updated pest boxes, plot bounds, vacuum debug markers and path lines together; entity ESP/text/tracer endpoints use the frame's interpolated entity position.
+- Extraction stores an immutable list of native geometry descriptions on Fabric's per-frame `LevelRenderState`. Drawing consumes that snapshot after translucent terrain. Geometry still uses Minecraft's native cuboid builder and near-plane line clipping.
+- Dedicated translucent box/line pipelines disable depth testing and writes; world text uses the native see-through font pipeline. FarmHelper no longer submits always-on-top debug gizmos, whose vanilla late-debug pass clears world depth. Translucent boxes sort on upload.
+- Tracers start 0.25 blocks ahead of the current camera, yielding an on-screen line in first person and following the camera in third person/Freelook. The old eye-to-target line collapsed under first-person perspective. Labels preserve V2's distance-adjusted text size.
+- `RenderChecks` renders temporary markers behind an opaque wall, checks frame coordinates/scale and pipeline depth state, writes three PNGs (`build/porting/overlay-0.png` through `overlay-2.png`), and checks that both overlay colors reached the framebuffer. First person, third person and Freelook were inspected.
+- Passed the full local client checks with vanilla rendering, then with the installed Sodium 0.9.1 and Iris 1.11.3 jars (Minecraft 26.1.2, no shader pack selected). The temporary test jars were removed afterward. This does not certify every shader pack or Lunar-specific modification.
+- API reference: [Fabric 26.1.2 world rendering](https://github.com/FabricMC/fabric-docs/blob/main/versions/26.1.2/develop/rendering/world.md).
+
+## Pest activation and instructions (version remains 3.0.0)
+
+- Normalize the resource-pack pest glyph U+E07F (observed in the user's live log) to the legacy pest marker before scoreboard filtering. Previously it was removed, so the count parser could treat a populated Garden as having zero pests. Test both glyphs through the real cleaning/counting chain.
+- Manual button and hotkey now share one startup path and report blocked conditions (disabled switch, wrong location, failsafe, zero detected pests, or no flight permission) instead of silently doing nothing. The AFK tick uses the same conditions without spamming manual messages.
+- Clarify the settings: normal farming checks the configured pest threshold at its feature/rewarp checks; idle AFK mode can start when at least one pest is detected; manual Trigger now / configured hotkey starts a single run. The configured vacuum must be in the hotbar and flight must be available.
+- Local checks cover modern/legacy counters and manual start conditions. No live pest-clearing run was started for this test, and the user's automation settings were not changed.
+
+## Tab pest-count source (version remains 3.0.0)
+
+- User screenshots showed `Pests: / Alive: 7 / Plots: 2, 7`, while the mod's P-key startup check reported zero. The prior glyph fix covered only sidebar parsing and missed the Tab `Alive` source.
+- Parse `Alive` only within the Pests Tab section. Its explicit value, including zero, takes priority over the optional sidebar counter. Read spaced or compact comma-separated plot lists. Reset both the selected count source and plot state on world changes.
+- Regression replaying the screenshot failed before the fix and passed afterward: 7 pests in plots 2 and 7, manual startup allowed, sidebar updates cannot erase the Tab count, unrelated Alive lines are ignored, explicit zero wins over stale sidebar data, and legacy fallback works when the widget is absent. The complete local client check suite passed.
+
+## Settings exit confirmation and organization (version remains 3.0.0)
+
+- Changed settings now prompt on Cancel/Escape: Save and exit, Discard changes, or Keep editing. Unchanged screens close directly. Dialog Escape returns to editing. Invalid drafts disable saving while still allowing correction or discard. Save failures return to the editor without discarding changes. English and Simplified Chinese dialog text is included.
+- Nested HUD/color settings and multiline text have the same confirmation behavior; nested Apply returns to the parent without writing the root configuration. Discarding the root restores nested edits too. Multiline drafts survive resizing.
+- Consolidated the sidebar into 13 main categories: Farming, Controls, Pests, Visitors, Automation, Scheduler & Contests, Failsafes, HUD & Overlays, Performance, Integrations, Privacy, Advanced, Debug. Moved ESP/tracer colors and markers into HUD & Overlays, rendering/FPS into Performance, privacy switches into Privacy, and auxiliary automation into Automation.
+- Explicit per-setting order puts feature switches and manual starts first. Sections stay contiguous; help, detailed options and notification settings follow. Persisted field names, configured values, bindings and version are unchanged.
+- Checks cover all 590 entries, 39 groups including nested pages, no missing/duplicate settings, Pest startup ordering, save/discard/keep-editing, clean exit, invalid values, keybinding rollback, nested edits and multiline drafts. Chinese confirmation was rendered and inspected in the isolated client (`build/porting/settings-exit-confirmation.png`).
