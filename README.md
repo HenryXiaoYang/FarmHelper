@@ -1,14 +1,16 @@
+<p align="center">
+  <img src="images/logo.png" alt="FarmHelper logo" width="80" height="80">
+</p>
+
 # FarmHelper V3
 
-**Author: HenryXiaoYang**
-
-FarmHelper V3 continues development of the original [FarmHelper V2 by JellyLabScripts](https://github.com/JellyLabScripts/FarmHelper), bringing it to Fabric for **Minecraft Java 26.1.2** and **Java 25**. Mod ID: `farmhelperv3`; version: `3.0.0`.
+FarmHelper V3 continues development of the original [FarmHelper V2 by JellyLabScripts](https://github.com/JellyLabScripts/FarmHelper), bringing it to Fabric for **Minecraft Java 26.1.2**.
 
 The farming, auxiliary automation, failsafe, HUD, pathfinding, and remote-control modules are included. This build passes compilation, automated local UI checks, and isolated-world compatibility checks; live Hypixel feature parity has **not** been verified. See [porting and verification notes](PORTING.md).
 
 ## Installation
 
-Install these into a Minecraft **26.1.2** Fabric instance using Java 25:
+Install these into a Minecraft **26.1.2** Fabric instance:
 
 - Fabric Loader **0.19.5 or later**.
 - [Fabric API](https://modrinth.com/mod/fabric-api) **0.155.3+26.1.2** (or a compatible newer 26.1.2 build).
@@ -27,8 +29,6 @@ On first V3 startup, the mod looks for V2 settings in the default OneConfig prof
 Rewarp points and plot data move to `config/farmhelperv3`; statistics and custom movement recordings are copied to its `data` directory. Custom recordings belong in `config/farmhelperv3/data/movrec`. A custom `farmhelper_sound.wav` still belongs in the game directory.
 
 ## Building
-
-Keep the mod version at **3.0.0** unless the user explicitly requests a version change.
 
 ```sh
 ./gradlew build
