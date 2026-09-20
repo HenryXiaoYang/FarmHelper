@@ -5,6 +5,7 @@ import com.jelly.farmhelperv3.FarmHelperClient;
 import com.jelly.farmhelperv3.config.FarmHelperConfig;
 import com.jelly.farmhelperv3.feature.impl.BanInfoWS;
 import com.jelly.farmhelperv3.feature.impl.UngrabMouse;
+import com.jelly.farmhelperv3.failsafe.FailsafeManager;
 import com.jelly.farmhelperv3.handler.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
@@ -17,6 +18,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Minecraft.class)
 public class MixinMinecraft {
+    @Inject(method = "handleKeybinds", at = @At("HEAD"))
+    private void farmhelper$clearScreenAttackSuppression(CallbackInfo ci) {
+        Minecraft mc = (Minecraft)(Object)this;
+        if (!FarmHelperClient.ready || mc.player == null || mc.level == null || mc.screen != null
+                || !mc.options.keyAttack.isDown() || !MacroHandler.getInstance().isMacroToggled()
+                || !MacroHandler.getInstance().isCurrentMacroEnabled()) return;
+        if (FailsafeManager.getInstance().triggeredFailsafe.isPresent()
+                || FailsafeManager.getInstance().getChooseEmergencyDelay().isScheduled()) return;
+        // Vanilla writes 10000 every screen tick, even if the macro itself never paused.
+        // Ordinary missed swings use at most 10 ticks and must retain their cooldown.
+        if (mc.missTime > 10) mc.missTime = 0;
+    }
+
     // Only relax the capture check for FarmHelper's intentional cursor release.
     // Vanilla still requires held attack, no screen, and no instant attack this tick.
     @ModifyExpressionValue(method = "handleKeybinds", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/MouseHandler;isMouseGrabbed()Z"))

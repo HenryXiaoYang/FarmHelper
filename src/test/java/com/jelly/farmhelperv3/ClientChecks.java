@@ -634,6 +634,23 @@ public final class ClientChecks implements ClientModInitializer {
                 check(mc.level.getBlockState(afterFreelook).isAir(), "Continue harvesting after leaving Freelook");
             }
             checkResumeHarvest(mc, input, origin, crop, focus);
+            checkMenuResumeHarvest(mc, input, origin, crop);
+            // Pumpkins are not instant-break in an ordinary local world. Exercise held
+            // attack over multiple ticks, rather than only zero-hardness carrots.
+            mc.player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.WOODEN_AXE));
+            mouse.ungrabMouse();
+            KeyBindUtils.stopMovement(); mc.missTime = 0;
+            for (var pumpkin : List.of(net.minecraft.world.level.block.Blocks.PUMPKIN, net.minecraft.world.level.block.Blocks.CARVED_PUMPKIN)) {
+                mc.level.setBlock(origin, pumpkin.defaultBlockState(), 3);
+                mc.hitResult = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(origin), net.minecraft.core.Direction.UP, origin, false);
+                int ticks = 0;
+                while (!mc.level.getBlockState(origin).isAir() && ticks++ < 100) {
+                    KeyBindUtils.holdThese(mc.options.keyAttack);
+                    input.invoke(mc);
+                }
+                check(mc.level.getBlockState(origin).isAir() && ticks > 1, "Held attack must finish a non-instant pumpkin break: " + pumpkin);
+            }
+            mc.player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, tool("THEORETICAL_HOE_CARROT_3", false));
             BlockPos stopped = origin.offset(0, 0, 3);
             mc.level.setBlock(stopped, crop, 3);
             mc.hitResult = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(stopped), net.minecraft.core.Direction.UP, stopped, false);
@@ -753,6 +770,53 @@ public final class ClientChecks implements ClientModInitializer {
             pausedFeatures.clear(); pausedFeatures.addAll(oldPausedFeatures);
         }
         System.out.println("FH CHECKS: ordinary/carved pumpkin growth, four facings, crop detection and BPS; real obstruction detection preserved");
+    }
+    private static void checkMenuResumeHarvest(Minecraft mc, java.lang.reflect.Method input, BlockPos pos,
+                                              net.minecraft.world.level.block.state.BlockState crop) throws Exception {
+        var handler = com.jelly.farmhelperv3.handler.MacroHandler.getInstance();
+        var previous = handler.getCurrentMacro();
+        var pauses = com.jelly.farmhelperv3.feature.FeatureManager.getInstance().getPauseExecutionFeatures();
+        var previousPauses = Set.copyOf(pauses);
+        boolean toggled = handler.isMacroToggled();
+        var farming = new com.jelly.farmhelperv3.macro.impl.SShapeVerticalCropMacro();
+        try {
+            pauses.clear(); handler.setMacroToggled(true); handler.setCurrentMacro(Optional.of(farming));
+            farming.setEnabled(true); farming.setCurrentState(com.jelly.farmhelperv3.macro.AbstractMacro.State.RIGHT);
+            mc.setScreen(new SettingsScreen(null, FarmHelper.config));
+            handler.click(new Events.TickEvent.ClientTickEvent(Events.TickEvent.Phase.START));
+            check(!farming.isPaused() && !mc.options.keyAttack.isDown(), "Opening a screen releases keys without pausing the macro");
+            // Minecraft.tick writes this on every screen tick. Closing a screen does not call onEnable.
+            mc.missTime = 10000;
+            mc.setScreen(null);
+            farming.invokeState();
+            mc.level.setBlock(pos, crop, 3);
+            mc.hitResult = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), net.minecraft.core.Direction.UP, pos, false);
+            input.invoke(mc);
+            check(mc.level.getBlockState(pos).isAir(), "Closing a GUI must resume actual harvesting without pauseMacro/resumeMacro");
+            mc.level.setBlock(pos, crop, 3);
+            mc.missTime = 10; input.invoke(mc);
+            check(mc.missTime == 10 && !mc.level.getBlockState(pos).isAir(), "Ordinary ten-tick miss cooldown is preserved");
+            handler.setMacroToggled(false);
+            com.jelly.farmhelperv3.feature.impl.UngrabMouse.getInstance().regrabMouse(true);
+            mc.options.keyAttack.setDown(true); mc.missTime = 10000; input.invoke(mc);
+            check(mc.missTime == 10000 && !mc.level.getBlockState(pos).isAir(), "Disabled macro cannot bypass attack suppression");
+            handler.setMacroToggled(true);
+            pauses.add(com.jelly.farmhelperv3.feature.impl.AutoSell.getInstance());
+            mc.missTime = 9999; input.invoke(mc);
+            check(mc.missTime == 9999 && !mc.level.getBlockState(pos).isAir(), "Auxiliary features keep control of attack suppression");
+            pauses.clear();
+            var detection = com.jelly.farmhelperv3.failsafe.FailsafeManager.getInstance().getChooseEmergencyDelay();
+            check(!detection.isScheduled(), "GUI regression starts outside failsafe detection");
+            detection.schedule(1000);
+            try {
+                input.invoke(mc);
+                check(mc.missTime == 9999 && !mc.level.getBlockState(pos).isAir(), "Pending failsafe keeps attack suppression");
+            } finally { detection.reset(); }
+        } finally {
+            farming.onDisable(); handler.setCurrentMacro(previous); handler.setMacroToggled(toggled);
+            pauses.clear(); pauses.addAll(previousPauses); mc.setScreen(null); mc.missTime = 0;
+        }
+        System.out.println("FH CHECKS: GUI-only interruptions resume harvesting; normal cooldowns and inactive/auxiliary guards preserved");
     }
     private static void checkResumeHarvest(Minecraft mc, java.lang.reflect.Method input, BlockPos pos,
                                           net.minecraft.world.level.block.state.BlockState crop, java.lang.reflect.Field focus) throws Exception {

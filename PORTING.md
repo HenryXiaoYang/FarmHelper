@@ -164,3 +164,10 @@ Compared against [mkram17/Bazaar-Utils at 4ed4679](https://github.com/mkram17/Ba
 - The user's archived September 20 log reports `minecraft:carved_pumpkin` as a newly placed obstacle. Modern `PumpkinBlock` does not include `CarvedPumpkinBlock`, so the old instanceof check missed this farm-pumpkin representation. Replaying air → carved pumpkin reproduced DirtFailsafe recording it as an obstruction.
 - Share `CropUtils.isPumpkin` across crop classification/readiness, initial/mouse-over crop detection, row/obstruction decisions, BPS counting and desync tracking. Recognize precisely ordinary and carved pumpkins, excluding jack-o-lanterns; include carved pumpkins in the existing crop-render whitelist.
 - Regression passes for ordinary pumpkins and all four carved-pumpkin facings: regrowth creates no dirt-check candidate, crop selection identifies pumpkin, and harvests increment BPS. Dirt, stone and jack-o-lantern placement still produce obstruction candidates. Build and the full isolated-client suite pass.
+
+## GUI-only harvesting interruption (post-release 3.0.2 fix)
+
+- The remaining report occurred with the tested 3.0.2 classes installed: movement continued, and manually holding attack did not recover harvesting. The previous regression covered explicit macro pause/resume but missed opening a GUI while the macro stayed enabled.
+- Minecraft writes `missTime = 10000` on every GUI tick. Closing that GUI can resume held movement/attack without calling the macro's `onEnable`, leaving block breaking suppressed. A replay reproduced this separately from mouse recapture.
+- At native input processing, clear only suppression above the ordinary 10-tick missed-swing cooldown when the main farming macro is active, attack is already held, no screen is open, and no auxiliary feature or failsafe owns control. This does not synthesize additional clicks or remove normal attack cooldowns.
+- Checks cover GUI close without pause/resume, normal cooldown preservation, inactive/auxiliary/failsafe guards, and multi-tick ordinary/carved pumpkin harvesting. Live Lunar validation still follows installing the new CI artifact and restarting.
