@@ -40,6 +40,7 @@ public final class ClientChecks implements ClientModInitializer {
                     checkFarmingTools(mc);
                     checkPestActivation(mc);
                     checkPestTabCounts(mc);
+                    checkVisitorHitResults(mc);
                     checkFlight(mc);
                     checkCropsAndPrediction(mc);
                     checkContinuousHarvest(mc);
@@ -699,6 +700,41 @@ public final class ClientChecks implements ClientModInitializer {
         }
         @Events.SubscribeEvent public void click(ClickedBlockEvent event) { clicked++; }
         @Events.SubscribeEvent public void destroy(PlayerDestroyBlockEvent event) { destroyed++; }
+    }
+    private static void checkVisitorHitResults(Minecraft mc) throws Exception {
+        var visitor = new com.jelly.farmhelperv3.feature.impl.VisitorsMacro();
+        var type = visitor.getClass();
+        var state = type.getDeclaredField("visitorsState"); state.setAccessible(true);
+        Object open = Arrays.stream(state.getType().getEnumConstants()).filter(s -> s.toString().equals("OPEN_VISITOR")).findFirst().orElseThrow();
+        var tick = type.getDeclaredMethod("onVisitorsState"); tick.setAccessible(true);
+        var target = new net.minecraft.world.entity.decoration.ArmorStand(mc.level, mc.player.getX() + 2, mc.player.getY(), mc.player.getZ());
+        for (String fieldName : List.of("currentVisitor", "currentCharacter")) {
+            var field = type.getDeclaredField(fieldName); field.setAccessible(true); field.set(visitor, Optional.of(target));
+        }
+        var oldHit = mc.hitResult;
+        var rotation = com.jelly.farmhelperv3.handler.RotationHandler.getInstance();
+        var pos = mc.player.blockPosition();
+        try {
+            for (boolean rotating : List.of(false, true)) {
+                rotation.reset();
+                if (rotating) rotation.easeTo(new com.jelly.farmhelperv3.util.helper.RotationConfiguration(
+                        new com.jelly.farmhelperv3.util.helper.Rotation(mc.player.getYRot() + 90, 0), 10_000, null));
+                for (var hit : Arrays.asList(null,
+                        new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), net.minecraft.core.Direction.UP, pos, false),
+                        net.minecraft.world.phys.BlockHitResult.miss(Vec3.atCenterOf(pos), net.minecraft.core.Direction.UP, pos))) {
+                    state.set(visitor, open); mc.hitResult = hit;
+                    tick.invoke(visitor);
+                    check(state.get(visitor).toString().equals(rotating ? "OPEN_VISITOR" : "GET_CLOSE_TO_VISITOR"),
+                            "Visitor block/miss/null hits wait for rotation, then retry positioning");
+                    check(!visitor.getDelayClock().isScheduled(), "Non-entity hits must not schedule a visitor click");
+                }
+            }
+            rotation.reset(); state.set(visitor, open);
+            mc.hitResult = new net.minecraft.world.phys.EntityHitResult(target);
+            tick.invoke(visitor);
+            check(state.get(visitor) == open && !visitor.getDelayClock().isScheduled(), "An entity without visitor parts must not be clicked");
+        } finally { mc.hitResult = oldHit; rotation.reset(); }
+        System.out.println("FH CHECKS: visitor block, miss, null and unrelated entity hits passed");
     }
     private static void checkRotation(Minecraft mc) throws Exception {
         var detector = com.jelly.farmhelperv3.failsafe.impl.RotationFailsafe.getInstance();

@@ -757,8 +757,8 @@ public class VisitorsMacro implements IFeature {
                 }
                 assert currentVisitor.isPresent();
                 if (moveAwayIfPlayerTooClose()) return;
-                if (mc.hitResult != null && ((net.minecraft.world.phys.EntityHitResult) mc.hitResult).getEntity() != null) {
-                    Entity entity = ((net.minecraft.world.phys.EntityHitResult) mc.hitResult).getEntity();
+                if (mc.hitResult instanceof EntityHitResult hit) {
+                    Entity entity = hit.getEntity();
                     VisitorEntities result2 = getVisitorEntities(entity);
                     if (result2 == null) break;
                     if (result2.nameArmorStand.equals(currentVisitor.get()) || result2.entityCharacter.equals(currentCharacter.get()) || entity.equals(result2.entityClickStand)) {
