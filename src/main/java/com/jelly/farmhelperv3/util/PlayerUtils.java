@@ -66,7 +66,7 @@ public class PlayerUtils {
             if (mc.level == null) return FarmHelperConfig.CropEnum.NONE;
             if (mc.level.getBlockState(pos) == null) return FarmHelperConfig.CropEnum.NONE;
             Block block = mc.level.getBlockState(pos).getBlock();
-            if (block instanceof CropBlock || block instanceof SugarCaneBlock || block instanceof CocoaBlock || block instanceof NetherWartBlock || block == Blocks.MELON || block instanceof PumpkinBlock || block instanceof MushroomBlock || block instanceof CactusBlock || block instanceof DoublePlantBlock) {
+            if (block instanceof CropBlock || block instanceof SugarCaneBlock || block instanceof CocoaBlock || block instanceof NetherWartBlock || block == Blocks.MELON || CropUtils.isPumpkin(block) || block instanceof MushroomBlock || block instanceof CactusBlock || block instanceof DoublePlantBlock) {
                 closestCrop = Pair.of(block, pos);
                 foundCropUnderMouse = true;
             }
@@ -88,7 +88,7 @@ public class PlayerUtils {
                         }
                         BlockPos pos = BlockUtils.getRelativeBlockPos(x, y, z, yaw);
                         Block block = mc.level.getBlockState(pos).getBlock();
-                        if (!(block instanceof CropBlock || block instanceof SugarCaneBlock || block instanceof CocoaBlock || block instanceof NetherWartBlock || block == Blocks.MELON || block instanceof PumpkinBlock || block instanceof MushroomBlock || block instanceof CactusBlock || block instanceof DoublePlantBlock))
+                        if (!(block instanceof CropBlock || block instanceof SugarCaneBlock || block instanceof CocoaBlock || block instanceof NetherWartBlock || block == Blocks.MELON || CropUtils.isPumpkin(block) || block instanceof MushroomBlock || block instanceof CactusBlock || block instanceof DoublePlantBlock))
                             continue;
 
                         if (closestCrop == null || mc.player.position().distanceTo(new Vec3(pos.getX() + 0.5f, pos.getY(), pos.getZ() + 0.5f)) < mc.player.position().distanceTo(new Vec3(closestCrop.getRight().getX() + 0.5f, closestCrop.getRight().getY(), closestCrop.getRight().getZ() + 0.5f))) {
@@ -116,7 +116,7 @@ public class PlayerUtils {
                 return FarmHelperConfig.CropEnum.COCOA_BEANS;
             } else if (left.equals(Blocks.MELON)) {
                 return FarmHelperConfig.CropEnum.MELON;
-            } else if (left.equals(Blocks.PUMPKIN)) {
+            } else if (CropUtils.isPumpkin(left)) {
                 return FarmHelperConfig.CropEnum.PUMPKIN;
             } else if (left.equals(Blocks.RED_MUSHROOM)) {
                 return FarmHelperConfig.CropEnum.MUSHROOM;
@@ -189,7 +189,7 @@ public class PlayerUtils {
             return FarmHelperConfig.CropEnum.COCOA_BEANS;
         } else if (block.equals(Blocks.MELON)) {
             return FarmHelperConfig.CropEnum.MELON;
-        } else if (block.equals(Blocks.PUMPKIN)) {
+        } else if (CropUtils.isPumpkin(block)) {
             return FarmHelperConfig.CropEnum.PUMPKIN;
         } else if (block.equals(Blocks.RED_MUSHROOM)) {
             return FarmHelperConfig.CropEnum.MUSHROOM;

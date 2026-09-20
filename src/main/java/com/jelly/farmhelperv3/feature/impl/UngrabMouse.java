@@ -24,7 +24,7 @@ public class UngrabMouse implements IFeature {
 
 
     public void ungrabMouse() {
-        if (!mc.mouseHandler.isMouseGrabbed() || mouseUngrabbed) return;
+        if (mouseUngrabbed) return;
         mc.options.pauseOnLostFocus = false;
         mc.mouseHandler.releaseMouse();
         mouseUngrabbed = true;
@@ -32,7 +32,7 @@ public class UngrabMouse implements IFeature {
     public void regrabMouse() { regrabMouse(false); }
     public void regrabMouse(boolean force) {
         if (!mouseUngrabbed && !force) return;
-        boolean preserveInput = mouseUngrabbed && MacroHandler.getInstance().isMacroToggled() && mc.screen == null;
+        boolean preserveInput = MacroHandler.getInstance().isMacroToggled() && mc.screen == null;
         int previousMissTime = mc.missTime;
         KeyMapping[] heldKeys = preserveInput ? KeyBindUtils.getHoldingKeybinds() : new KeyMapping[0];
         mouseUngrabbed = false;
@@ -84,6 +84,11 @@ public class UngrabMouse implements IFeature {
             e.printStackTrace();
         }
         IFeature.super.stop();
+    }
+
+    @Override
+    public void resume() {
+        if (!Freelook.getInstance().isRunning()) ungrabMouse();
     }
 
     @Override

@@ -71,6 +71,11 @@ public class CropUtils {
         return null;
     }
 
+    /** Hypixel also sends its farm pumpkins as carved_pumpkin on modern clients. */
+    public static boolean isPumpkin(Block block) {
+        return block == Blocks.PUMPKIN || block == Blocks.CARVED_PUMPKIN;
+    }
+
     public static boolean isCrop(Block block) {
         return block instanceof CropBlock ||
                 block instanceof PotatoBlock ||
@@ -79,7 +84,7 @@ public class CropUtils {
                 block instanceof CocoaBlock ||
                 block instanceof CactusBlock ||
                 block instanceof SugarCaneBlock ||
-                block instanceof PumpkinBlock ||
+                CropUtils.isPumpkin(block) ||
                 block == Blocks.MELON ||
                 block instanceof StemBlock ||
                 block instanceof MushroomBlock;
@@ -100,7 +105,7 @@ public class CropUtils {
             return true;
         } else if (block instanceof SugarCaneBlock) {
             return true;
-        } else if (block instanceof PumpkinBlock) {
+        } else if (CropUtils.isPumpkin(block)) {
             return true;
         } else if (block == Blocks.MELON) {
             return true;

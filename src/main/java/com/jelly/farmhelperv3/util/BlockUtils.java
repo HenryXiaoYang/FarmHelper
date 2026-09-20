@@ -436,7 +436,7 @@ public class BlockUtils {
                     block instanceof NetherWartBlock && blockState.getValue(NetherWartBlock.AGE) == 3 ||
                     block instanceof CocoaBlock && blockState.getValue(CocoaBlock.AGE) == 2 ||
                     block == Blocks.MELON ||
-                    block instanceof PumpkinBlock ||
+                    CropUtils.isPumpkin(block) ||
                     block instanceof CactusBlock ||
                     block instanceof MushroomBlock;
         }).collect(Collectors.toList());
@@ -475,7 +475,7 @@ public class BlockUtils {
             case MELON:
                 return crop == Blocks.MELON;
             case PUMPKIN:
-                return crop instanceof PumpkinBlock;
+                return CropUtils.isPumpkin(crop);
             case CACTUS:
                 return crop instanceof CactusBlock;
             case MUSHROOM:

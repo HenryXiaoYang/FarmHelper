@@ -41,8 +41,10 @@ public final class ClientChecks implements ClientModInitializer {
                     checkPestActivation(mc);
                     checkPestTabCounts(mc);
                     checkVisitorHitResults(mc);
+                    com.jelly.farmhelperv3.feature.impl.BazaarSellOrderChecks.client(mc);
                     checkFlight(mc);
                     checkCropsAndPrediction(mc);
+                    checkPumpkinGrowth(mc);
                     checkContinuousHarvest(mc);
                     checkRotation(mc);
                     pending = new ClientboundSetPlayerInventoryPacket(8, mc.player.getInventory().getItem(8).copy());
@@ -54,6 +56,7 @@ public final class ClientChecks implements ClientModInitializer {
                 if (pending != null && ++pendingTicks > 100) throw new AssertionError("Packet handoff timed out");
                 if (pending != null && packets == 1) {
                     pending = null;
+                    mc.gui.getChat().clearMessages(true); // Fixture feedback must not cover the rendering test markers.
                     new RenderChecks(mc);
                     System.out.println("FH CHECKS: inventory mapping, before-update packet dispatch, network-thread scheduling and native flight comparison, crop states, block prediction and angle thresholds passed");
                 }
@@ -630,6 +633,7 @@ public final class ClientChecks implements ClientModInitializer {
                 input.invoke(mc);
                 check(mc.level.getBlockState(afterFreelook).isAir(), "Continue harvesting after leaving Freelook");
             }
+            checkResumeHarvest(mc, input, origin, crop, focus);
             BlockPos stopped = origin.offset(0, 0, 3);
             mc.level.setBlock(stopped, crop, 3);
             mc.hitResult = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(stopped), net.minecraft.core.Direction.UP, stopped, false);
@@ -691,6 +695,112 @@ public final class ClientChecks implements ClientModInitializer {
             mc.gameMode.setLocalMode(mode);
             FarmHelperConfig.increasedCrops = crops; FarmHelperConfig.pinglessCactus = cactus;
         }
+    }
+    private static void checkPumpkinGrowth(Minecraft mc) throws Exception {
+        var handler = com.jelly.farmhelperv3.handler.MacroHandler.getInstance();
+        var game = com.jelly.farmhelperv3.handler.GameStateHandler.getInstance();
+        var location = game.getClass().getDeclaredField("location"); location.setAccessible(true);
+        Object oldLocation = location.get(game);
+        var cleaner = com.jelly.farmhelperv3.feature.impl.PlotCleaningHelper.getInstance();
+        var cleaning = cleaner.getClass().getDeclaredField("enabled"); cleaning.setAccessible(true);
+        boolean oldCleaning = cleaning.getBoolean(cleaner), toggled = handler.isMacroToggled();
+        var originalMacro = handler.getCurrentMacro(); var originalCrop = handler.getCrop();
+        var pausedFeatures = com.jelly.farmhelperv3.feature.FeatureManager.getInstance().getPauseExecutionFeatures();
+        var oldPausedFeatures = Set.copyOf(pausedFeatures);
+        var bps = com.jelly.farmhelperv3.feature.impl.BPSTracker.getInstance();
+        long oldBroken = bps.blocksBroken; boolean bpsPaused = bps.isPaused;
+        var timer = handler.getMacroingTimer(); long started = timer.startedAt, pausedAt = timer.pausedAt; boolean timerPaused = timer.paused;
+        var detector = new com.jelly.farmhelperv3.failsafe.impl.DirtFailsafe();
+        var pos = mc.player.blockPosition().offset(1, 0, 0);
+        var oldBlock = mc.level.getBlockState(pos); var oldHit = mc.hitResult;
+        var macro = handler.getMacro(); var oldState = macro.getCurrentState(); boolean oldEnabled = macro.isEnabled();
+        try {
+            cleaning.setBoolean(cleaner, false); pausedFeatures.clear();
+            handler.setCurrentMacro(Optional.of(macro)); macro.setEnabled(true); handler.setMacroToggled(true);
+            macro.setCurrentState(com.jelly.farmhelperv3.macro.AbstractMacro.State.RIGHT);
+            timer.schedule(); bps.isPaused = false;
+            location.set(game, com.jelly.farmhelperv3.handler.GameStateHandler.Location.GARDEN);
+            check(!com.jelly.farmhelperv3.failsafe.FailsafeManager.getInstance().firstCheckReturn(), "Pumpkin test must exercise enabled block detection");
+            var pumpkinStates = new ArrayList<net.minecraft.world.level.block.state.BlockState>();
+            pumpkinStates.add(net.minecraft.world.level.block.Blocks.PUMPKIN.defaultBlockState());
+            for (var facing : net.minecraft.core.Direction.Plane.HORIZONTAL)
+                pumpkinStates.add(net.minecraft.world.level.block.Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(net.minecraft.world.level.block.CarvedPumpkinBlock.FACING, facing));
+            for (var state : pumpkinStates) {
+                detector.resetStates();
+                detector.onBlockChange(new BlockChangeEvent(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), state, mc.level));
+                check(!detector.hasDirtBlocks(), "Natural pumpkin growth must not become a dirt-check candidate: " + state);
+                handler.setMacroToggled(false); mc.level.setBlock(pos, state, 3); handler.setMacroToggled(true);
+                mc.hitResult = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), net.minecraft.core.Direction.UP, pos, false);
+                check(PlayerUtils.getFarmingCrop() == FarmHelperConfig.CropEnum.PUMPKIN && PlayerUtils.getCropBasedOnMouseOver() == FarmHelperConfig.CropEnum.PUMPKIN,
+                        "Both crop detection paths recognize ordinary and carved pumpkins");
+                check(CropUtils.isCropReady(state.getBlock(), pos), "Both pumpkin variants are harvestable");
+                handler.setCrop(FarmHelperConfig.CropEnum.PUMPKIN);
+                long before = bps.blocksBroken;
+                bps.onBlockChange(new PlayerDestroyBlockEvent(pos, net.minecraft.core.Direction.UP, state.getBlock()));
+                check(bps.blocksBroken == before + 1, "Harvesting carved pumpkins contributes to BPS");
+            }
+            for (var obstruction : List.of(net.minecraft.world.level.block.Blocks.DIRT, net.minecraft.world.level.block.Blocks.STONE, net.minecraft.world.level.block.Blocks.JACK_O_LANTERN)) {
+                detector.resetStates();
+                detector.onBlockChange(new BlockChangeEvent(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), obstruction.defaultBlockState(), mc.level));
+                check(detector.hasDirtBlocks(), "Non-crop solid blocks must still be detected: " + obstruction);
+            }
+        } finally {
+            handler.setMacroToggled(false); mc.level.setBlock(pos, oldBlock, 3); mc.hitResult = oldHit;
+            handler.setCurrentMacro(originalMacro); handler.setCrop(originalCrop); handler.setMacroToggled(toggled);
+            macro.setCurrentState(oldState); macro.setEnabled(oldEnabled); bps.blocksBroken = oldBroken; bps.isPaused = bpsPaused;
+            timer.startedAt = started; timer.pausedAt = pausedAt; timer.paused = timerPaused;
+            location.set(game, oldLocation); cleaning.setBoolean(cleaner, oldCleaning);
+            pausedFeatures.clear(); pausedFeatures.addAll(oldPausedFeatures);
+        }
+        System.out.println("FH CHECKS: ordinary/carved pumpkin growth, four facings, crop detection and BPS; real obstruction detection preserved");
+    }
+    private static void checkResumeHarvest(Minecraft mc, java.lang.reflect.Method input, BlockPos pos,
+                                          net.minecraft.world.level.block.state.BlockState crop, java.lang.reflect.Field focus) throws Exception {
+        var handler = com.jelly.farmhelperv3.handler.MacroHandler.getInstance();
+        var mouse = com.jelly.farmhelperv3.feature.impl.UngrabMouse.getInstance();
+        var originalMacro = handler.getCurrentMacro();
+        var originalCrop = handler.getCrop();
+        var pauses = com.jelly.farmhelperv3.feature.FeatureManager.getInstance().getPauseExecutionFeatures();
+        var originalPauses = Set.copyOf(pauses);
+        boolean autoUngrab = FarmHelperConfig.autoUngrabMouse;
+        var farming = new com.jelly.farmhelperv3.macro.impl.SShapeVerticalCropMacro();
+        try {
+            pauses.clear(); handler.setCurrentMacro(Optional.of(farming)); handler.setCrop(FarmHelperConfig.CropEnum.CARROT);
+            for (int scenario = 0; scenario < 3; scenario++) {
+                boolean releasedCursor = scenario != 0;
+                FarmHelperConfig.autoUngrabMouse = releasedCursor;
+                farming.setEnabled(true); farming.setCurrentState(com.jelly.farmhelperv3.macro.AbstractMacro.State.RIGHT);
+                farming.setYaw(mc.player.getYRot()); farming.setPitch(mc.player.getXRot());
+                farming.invokeState();
+                handler.pauseMacro();
+                check(farming.isPaused() && !mc.options.keyAttack.isDown(), "Interruption releases attack");
+                mc.setScreen(new net.minecraft.client.gui.screens.inventory.ContainerScreen(ChestMenu.threeRows(91, mc.player.getInventory()), mc.player.getInventory(), net.minecraft.network.chat.Component.literal("Interrupted farming")));
+                mc.setScreen(null);
+                mouse.regrabMouse(true);
+                if (releasedCursor) mouse.ungrabMouse(); else mc.mouseHandler.releaseMouse();
+                focus.setBoolean(mc.getWindow(), scenario != 2);
+                handler.resumeMacro();
+                check(mc.missTime == 0, "Resume clears native capture attack suppression; got " + mc.missTime);
+                check(!farming.isPaused() && farming.getCurrentState() == com.jelly.farmhelperv3.macro.AbstractMacro.State.RIGHT, "Resume restores farming state");
+                check(mouse.isMouseUngrabbed() == releasedCursor && mc.mouseHandler.isMouseGrabbed() != releasedCursor, "Resume restores configured cursor capture");
+                farming.getRotation().reset(); // Simulate completion of the ordinary resume rotation.
+                for (int i = 0; i < 2; i++) {
+                    farming.invokeState();
+                    check(mc.options.keyAttack.isDown(), "Farming state re-holds attack after resume");
+                    mc.level.setBlock(pos, crop, 3);
+                    mc.hitResult = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), net.minecraft.core.Direction.UP, pos, false);
+                    input.invoke(mc);
+                    check(mc.level.getBlockState(pos).isAir(), "Resumed held attack harvests successive crops without a physical click");
+                }
+                mc.missTime = 7; handler.resumeMacro();
+                check(mc.missTime == 7, "Redundant resume does not reset ordinary attack cooldowns");
+            }
+        } finally {
+            focus.setBoolean(mc.getWindow(), true);
+            farming.onDisable(); handler.setCurrentMacro(originalMacro); handler.setCrop(originalCrop);
+            pauses.clear(); pauses.addAll(originalPauses); FarmHelperConfig.autoUngrabMouse = autoUngrab;
+        }
+        System.out.println("FH CHECKS: interrupted farming resumes held attack and consecutive harvests with captured/released cursors");
     }
     public static final class BreakObserver {
         final BlockPos pos; int sequence, clicked, destroyed;

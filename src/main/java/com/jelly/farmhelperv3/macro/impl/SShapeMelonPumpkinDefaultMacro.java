@@ -9,6 +9,7 @@ import com.jelly.farmhelperv3.util.AngleUtils;
 import com.jelly.farmhelperv3.util.BlockUtils;
 import com.jelly.farmhelperv3.util.KeyBindUtils;
 import com.jelly.farmhelperv3.util.LogUtils;
+import com.jelly.farmhelperv3.util.CropUtils;
 import com.jelly.farmhelperv3.util.helper.Rotation;
 import com.jelly.farmhelperv3.util.helper.RotationConfiguration;
 import net.minecraft.world.level.block.Block;
@@ -96,9 +97,9 @@ public class SShapeMelonPumpkinDefaultMacro extends AbstractMacro {
             case LEFT:
                 Block blockLeft = BlockUtils.getBlock(getRelativeBlockPos(-1, 0, 0, getClosest90Deg().orElse(AngleUtils.getClosest())));
                 Block blockRight = BlockUtils.getBlock(getRelativeBlockPos(1, 0, 0, getClosest90Deg().orElse(AngleUtils.getClosest())));
-                if (blockLeft.equals(Blocks.MELON) || blockLeft.equals(Blocks.PUMPKIN)) {
+                if (blockLeft.equals(Blocks.MELON) || CropUtils.isPumpkin(blockLeft)) {
                     changeState(State.LEFT);
-                } else if (blockRight.equals(Blocks.MELON) || blockRight.equals(Blocks.PUMPKIN)) {
+                } else if (blockRight.equals(Blocks.MELON) || CropUtils.isPumpkin(blockRight)) {
                     changeState(State.RIGHT);
                 } else if (GameStateHandler.getInstance().isFrontWalkable()) {
                     if (changeLaneDirection == ChangeLaneDirection.BACKWARD) {
@@ -298,10 +299,10 @@ public class SShapeMelonPumpkinDefaultMacro extends AbstractMacro {
         for (int i = 0; i < 180; i++) {
             Block blockRight = getRelativeBlock(i, 0, 0);
             Block blockLeft = getRelativeBlock(-i, 0, 0);
-            if (blockRight.equals(Blocks.PUMPKIN) || blockRight.equals(Blocks.MELON)) {
+            if (CropUtils.isPumpkin(blockRight) || blockRight.equals(Blocks.MELON)) {
                 return State.RIGHT;
             }
-            if (blockLeft.equals(Blocks.PUMPKIN) || blockLeft.equals(Blocks.MELON)) {
+            if (CropUtils.isPumpkin(blockLeft) || blockLeft.equals(Blocks.MELON)) {
                 return State.LEFT;
             }
             if (!BlockUtils.canWalkThrough(getRelativeBlockPos(i, 0, 0, getClosest90Deg().orElse(AngleUtils.getClosest())))) {

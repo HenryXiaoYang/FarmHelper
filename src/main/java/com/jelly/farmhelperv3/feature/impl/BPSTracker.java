@@ -8,6 +8,7 @@ import com.jelly.farmhelperv3.handler.GameStateHandler;
 import com.jelly.farmhelperv3.handler.MacroHandler;
 import com.jelly.farmhelperv3.macro.AbstractMacro;
 import com.jelly.farmhelperv3.util.LogUtils;
+import com.jelly.farmhelperv3.util.CropUtils;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
@@ -194,7 +195,7 @@ public class BPSTracker implements IFeature {
                 }
                 break;
             case PUMPKIN:
-                if (event.block.equals(Blocks.PUMPKIN)) {
+                if (CropUtils.isPumpkin(event.block)) {
                     blocksBroken++;
                 }
                 break;

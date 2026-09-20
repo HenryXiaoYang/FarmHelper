@@ -80,6 +80,9 @@ public class AutoSell implements IFeature {
 
     private boolean emptySacks = false;
     private boolean pickedUpItems = false;
+    private final BazaarSellOrders sellOrders = new BazaarSellOrders();
+    private boolean orderMode, managementOnly, spawnReturnPending;
+    private int sackInventoryBefore;
 
     @Getter
     private final Clock delayClock = new Clock();
@@ -113,13 +116,14 @@ public class AutoSell implements IFeature {
     @Override
     public void start() {
         this.enable(false);
-        IFeature.super.start();
     }
 
     @Override
     public void stop() {
         LogUtils.sendWarning("[Auto Sell] Disabling Auto Sell");
         enabled = false;
+        sellOrders.stop();
+        orderMode = managementOnly = false;
         emptySacks = false;
         pickedUpItems = false;
         marketType = MarketType.NONE;
@@ -132,7 +136,11 @@ public class AutoSell implements IFeature {
         PlayerUtils.closeContainer();
         KeyBindUtils.stopMovement();
         if (MacroHandler.getInstance().isMacroToggled() && !VisitorsMacro.getInstance().isRunning() && !AutoComposter.getInstance().isRunning()) {
-            Tasks.schedule(() -> MacroHandler.getInstance().resumeMacro(), 1000, TimeUnit.MILLISECONDS);
+            var world = mc.level;
+            Tasks.schedule(() -> {
+                if (world != null && mc.level == world && !enabled && !FailsafeManager.getInstance().triggeredFailsafe.isPresent()
+                        && FailsafeManager.getInstance().getEmergencyQueue().isEmpty()) MacroHandler.getInstance().resumeMacro();
+            }, 1000, TimeUnit.MILLISECONDS);
         }
         IFeature.super.stop();
     }
@@ -140,6 +148,7 @@ public class AutoSell implements IFeature {
     @Override
     public void resetStatesAfterMacroDisabled() {
         dontEnableForClock.reset();
+        spawnReturnPending = false;
     }
 
     @Override
@@ -153,7 +162,12 @@ public class AutoSell implements IFeature {
     }
 
     public void enable(boolean manually) {
+        enable(manually, false);
+    }
+
+    private void enable(boolean manually, boolean manageOrders) {
         if (enabled && !manually) return;
+        if (!manually && dontEnableForClock.isScheduled() && !dontEnableForClock.passed()) return;
         if (GameStateHandler.getInstance().getCookieBuffState() != GameStateHandler.BuffState.ACTIVE) {
             LogUtils.sendError("[Auto Sell] You don't have cookie buff active!");
             return;
@@ -165,6 +179,10 @@ public class AutoSell implements IFeature {
         PlayerUtils.closeContainer();
         LogUtils.sendWarning("[Auto Sell] Enabling Auto Sell");
         enabled = true;
+        orderMode = FarmHelperConfig.autoSellBazaarOrders && !FarmHelperConfig.autoSellMarketType;
+        managementOnly = manageOrders;
+        emptySacks = pickedUpItems = false;
+        if (orderMode) sellOrders.begin(manageOrders);
         marketType = FarmHelperConfig.autoSellMarketType ? MarketType.NPC : MarketType.BAZAAR;
         npcState = NPCState.NONE;
         bazaarState = BazaarState.NONE;
@@ -178,11 +196,48 @@ public class AutoSell implements IFeature {
         if (MacroHandler.getInstance().isMacroToggled()) {
             MacroHandler.getInstance().pauseMacro();
         }
+        IFeature.super.start();
+    }
+
+    /** Called only once a Garden warp has actually landed at the saved spawn. */
+    public void onSpawnReturn() { spawnReturnPending = true; }
+
+    public boolean tryManageOrdersAtSpawn() {
+        if (!spawnReturnPending || !PlayerUtils.isStandingOnSpawnPoint()) return false;
+        if (!FarmHelperConfig.enableAutoSell || !FarmHelperConfig.autoSellBazaarOrders || FarmHelperConfig.autoSellMarketType) {
+            spawnReturnPending = false;
+            return false;
+        }
+        if (!MacroHandler.getInstance().getAfterRewarpDelay().passed()) return true;
+        // Consume before opening the GUI; resumeMacro must never re-arm this check.
+        spawnReturnPending = false;
+        if (!sellOrders.hasManagedOrders() || isRunning() || !MacroHandler.getInstance().isMacroToggled()
+                || !GameStateHandler.getInstance().inGarden()
+                || FailsafeManager.getInstance().triggeredFailsafe.isPresent()
+                || !FailsafeManager.getInstance().getEmergencyQueue().isEmpty()
+                || FeatureManager.getInstance().isAnyOtherFeatureEnabled(this)
+                || FarmHelperConfig.pauseAutoSellDuringJacobsContest && GameStateHandler.getInstance().inJacobContest()) return false;
+        enable(false, true);
+        return enabled;
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(com.jelly.farmhelperv3.event.Events.WorldEvent.Unload event) {
+        spawnReturnPending = false;
+        if (enabled) stop();
+        sellOrders.clearSession();
+    }
+
+    @SubscribeEvent
+    public void onContainerClick(com.jelly.farmhelperv3.event.SendPacketEvent event) {
+        if (event.packet instanceof net.minecraft.network.protocol.game.ServerboundContainerClickPacket packet)
+            sellOrders.onClick(packet);
     }
 
 
     @SubscribeEvent
     public void onTickShouldEnable(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.START) return;
         if (mc.player == null || mc.level == null) return;
         if (!isToggled()) return;
         if (isRunning()) return;
@@ -213,8 +268,15 @@ public class AutoSell implements IFeature {
 
     @SubscribeEvent
     public void onTickEnabled(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.START) return;
         if (mc.player == null || mc.level == null) return;
         if (!isRunning()) return;
+        if (orderMode && (!FarmHelperConfig.autoSellBazaarOrders || FarmHelperConfig.autoSellMarketType
+                || FailsafeManager.getInstance().triggeredFailsafe.isPresent()
+                || !FailsafeManager.getInstance().getEmergencyQueue().isEmpty())) {
+            failOrderSale("Order selling was interrupted");
+            return;
+        }
         if (!GameStateHandler.getInstance().inGarden()) return;
         if (GameStateHandler.getInstance().getServerClosingSeconds().isPresent()) {
             LogUtils.sendWarning("[Auto Sell] Server is closing in " + GameStateHandler.getInstance().getServerClosingSeconds().get() + " seconds, disabling Auto Sell");
@@ -228,7 +290,8 @@ public class AutoSell implements IFeature {
         if (FeatureManager.getInstance().isAnyOtherFeatureEnabled(this, VisitorsMacro.getInstance(), AutoComposter.getInstance())) return;
 
 
-        if (timeoutClock.isScheduled() && timeoutClock.passed()) {
+        if (timeoutClock.isScheduled() && timeoutClock.passed() && !(orderMode && marketType == MarketType.BAZAAR && sacksState == SacksState.NONE)) {
+            if (orderMode) { failOrderSale("Sack/NPC menu timed out"); return; }
             LogUtils.sendWarning("[Auto Sell] Timeout reached, disabling Auto Sell");
             stop();
             return;
@@ -310,11 +373,25 @@ public class AutoSell implements IFeature {
                 } else if (InventoryUtils.getInventoryName() == null) {
                     return;
                 }
+                if (orderMode && pickedUpItems) {
+                    // Withdraw a single batch, list it, then return for the next batch.
+                    if (farmingInventoryCount() == sackInventoryBefore) {
+                        int pickupSlot = InventoryUtils.getSlotIdOfItemInContainer("Pickup All");
+                        if (pickupSlot != -1 && !InventoryUtils.getLoreOfItemInContainer(pickupSlot).stream()
+                                .anyMatch(line -> line.matches("(?i).*\\b0 items\\b.*") || line.contains("sack is empty") || line.contains("nothing to pick up"))) return;
+                        emptySacks = true;
+                    }
+                    PlayerUtils.closeContainer();
+                    setSacksState(SacksState.CLOSE_MENU);
+                    delayClock.schedule(FarmHelperConfig.getRandomGUIMacroDelay());
+                    return;
+                }
                 int pickUpAll = InventoryUtils.getSlotIdOfItemInContainer("Pickup All");
                 if (pickUpAll != -1) {
                     if (mc.player.getInventory().getFreeSlot() != -1) {
                         LogUtils.sendDebug("[Auto Sell] Picking up all items from Enchanted Agronomy Sack");
                         pickedUpItems = true;
+                        sackInventoryBefore = farmingInventoryCount();
                         InventoryUtils.clickContainerSlot(pickUpAll, InventoryUtils.ClickType.LEFT, InventoryUtils.ClickMode.PICKUP);
                     } else {
                         LogUtils.sendDebug("[Auto Sell] Inventory is full, closing Sacks menu");
@@ -344,8 +421,27 @@ public class AutoSell implements IFeature {
                 }
                 if (emptySacks && !pickedUpItems) {
                     stop();
+                } else if (orderMode && marketType == MarketType.BAZAAR) {
+                    sellOrders.begin(false);
                 }
                 return;
+        }
+
+        if (orderMode && marketType == MarketType.BAZAAR) {
+            sellOrders.tick();
+            if (sellOrders.failure() != null) failOrderSale(sellOrders.failure());
+            else if (sellOrders.done()) {
+                PlayerUtils.closeContainer();
+                if (managementOnly) stop();
+                else if (hasAnythingToSell()) {
+                    marketType = MarketType.NPC;
+                    setNpcState(NPCState.NONE);
+                } else if (FarmHelperConfig.autoSellSacks && !emptySacks && mc.player.getInventory().getFreeSlot() != -1) {
+                    setSacksState(SacksState.OPEN_MENU);
+                } else stop();
+                delayClock.schedule(FarmHelperConfig.getRandomGUIMacroDelay());
+            }
+            return;
         }
 
         switch (marketType) {
@@ -496,7 +592,7 @@ public class AutoSell implements IFeature {
                             if (slot == null || !slot.hasItem() || slot.index < inv.getContainerSize())
                                 continue;
                             String name = ChatFormatting.stripFormatting(slot.getItem().getHoverName().getString());
-                            if (!shouldSell(name)) continue;
+                            if (!shouldSellToNpc(slot.getItem())) continue;
                             LogUtils.sendDebug("[Auto Sell] Selling " + name);
                             InventoryUtils.clickSlotWithId(slot.index, InventoryUtils.ClickType.LEFT, InventoryUtils.ClickMode.PICKUP, chest.containerId);
                             delayClock.schedule(FarmHelperConfig.getRandomGUIMacroDelay());
@@ -560,6 +656,7 @@ public class AutoSell implements IFeature {
             sacksState = SacksState.CLOSE_MENU;
         }
         if (message.startsWith("[Bazaar] No items could be matched")) {
+            if (orderMode) { failOrderSale("Bazaar could not match the requested product"); return; }
             bazaarState = BazaarState.CLOSE_MENU;
         }
     }
@@ -573,12 +670,50 @@ public class AutoSell implements IFeature {
             if (itemStack.has(net.minecraft.core.component.DataComponents.TOOL)) continue;
             if (itemStack.has(net.minecraft.core.component.DataComponents.EQUIPPABLE)) continue;
             if (name.equals("Basket of Seeds")) continue;
-            if (shouldSell(name)) {
+            if (shouldSellToNpc(itemStack)) {
                 LogUtils.sendDebug("[Auto Sell] Found " + name + " at slot " + i);
                 return true;
             }
         }
         return false;
+    }
+
+    private void failOrderSale(String reason) {
+        LogUtils.sendWarning("[Auto Sell] " + reason + ". Keeping remaining items; automatic selling paused for 5 minutes.");
+        dontEnableForClock.schedule(300_000);
+        stop();
+    }
+
+    public boolean eligibleForSellOrder(ItemStack stack) {
+        if (stack.isEmpty() || stack.has(net.minecraft.core.component.DataComponents.TOOL)
+                || stack.has(net.minecraft.core.component.DataComponents.EQUIPPABLE)) return false;
+        var data = InventoryUtils.skyblockData(stack);
+        if (!data.getStringOr("uuid", "").isEmpty() || InventoryUtils.isFarmingTool(stack)) return false;
+        return shouldSell(ChatFormatting.stripFormatting(stack.getHoverName().getString())) || isFlowerCrop(stack);
+    }
+
+    private boolean isFlowerCrop(ItemStack stack) {
+        return switch (InventoryUtils.skyblockId(stack)) {
+            case "MOONFLOWER", "ENCHANTED_MOONFLOWER", "SUNFLOWER", "ENCHANTED_SUNFLOWER",
+                    "WILD_ROSE", "ENCHANTED_WILD_ROSE", "HELIANTHUS" -> true;
+            default -> false;
+        };
+    }
+
+    private boolean shouldSellToNpc(ItemStack stack) {
+        String name = ChatFormatting.stripFormatting(stack.getHoverName().getString());
+        if (!orderMode) return shouldSell(name);
+        return eligibleForSellOrder(stack) && shouldSellCustomItem(name) && !isFlowerCrop(stack)
+                && crops.stream().noneMatch(name::startsWith) && !sellOrders.isBazaarItem(InventoryUtils.skyblockId(stack));
+    }
+
+    private int farmingInventoryCount() {
+        int count = 0;
+        for (int i = 0; i < 36; i++) {
+            ItemStack stack = mc.player.getInventory().getItem(i);
+            if (eligibleForSellOrder(stack)) count += stack.getCount();
+        }
+        return count;
     }
 
     private boolean hasShitItemsInInventory() {

@@ -7,6 +7,7 @@ import com.jelly.farmhelperv3.failsafe.FailsafeManager;
 import com.jelly.farmhelperv3.feature.IFeature;
 import com.jelly.farmhelperv3.handler.MacroHandler;
 import com.jelly.farmhelperv3.util.LogUtils;
+import com.jelly.farmhelperv3.util.CropUtils;
 import com.jelly.farmhelperv3.util.helper.FifoQueue;
 import lombok.Getter;
 import net.minecraft.world.level.block.Block;
@@ -109,7 +110,7 @@ public class DesyncChecker implements IFeature {
         return block instanceof NetherWartBlock ||
                 block instanceof CropBlock ||
                 block.equals(Blocks.MELON) ||
-                block.equals(Blocks.PUMPKIN) ||
+                CropUtils.isPumpkin(block) ||
                 block.equals(Blocks.SUGAR_CANE) ||
                 block.equals(Blocks.CACTUS) ||
                 block.equals(Blocks.COCOA) ||

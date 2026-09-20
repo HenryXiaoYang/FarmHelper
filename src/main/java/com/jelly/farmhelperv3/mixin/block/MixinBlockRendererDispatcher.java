@@ -33,6 +33,7 @@ public class MixinBlockRendererDispatcher {
             Blocks.CARROTS,
             Blocks.POTATOES,
             Blocks.PUMPKIN,
+            Blocks.CARVED_PUMPKIN,
             Blocks.PUMPKIN_STEM,
             Blocks.MELON,
             Blocks.MELON_STEM,

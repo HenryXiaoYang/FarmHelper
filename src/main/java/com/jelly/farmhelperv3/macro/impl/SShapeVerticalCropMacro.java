@@ -126,7 +126,7 @@ public class SShapeVerticalCropMacro extends AbstractMacro {
     private boolean stuckInMelonsOrPumpkins() {
         Block leftBlock = BlockUtils.getBlock(BlockUtils.getRelativeBlockPos(-1, 0, 0, getYaw()));
         Block rightBlock = BlockUtils.getBlock(BlockUtils.getRelativeBlockPos(1, 0, 0, getYaw()));
-        return leftBlock.equals(Blocks.PUMPKIN) || leftBlock.equals(Blocks.MELON) || rightBlock.equals(Blocks.PUMPKIN) || rightBlock.equals(Blocks.MELON);
+        return CropUtils.isPumpkin(leftBlock) || leftBlock.equals(Blocks.MELON) || CropUtils.isPumpkin(rightBlock) || rightBlock.equals(Blocks.MELON);
     }
 
     private boolean lagBackDetected(int currentCoord) {

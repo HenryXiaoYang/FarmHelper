@@ -281,7 +281,9 @@ public abstract class AbstractMacro {
     public abstract void invokeState();
 
     public void onEnable() {
-
+        // Mouse capture/menu dismissal installs a 10000-tick attack suppression. A new
+        // farming session must clear it before the state machine starts holding attack.
+        mc.missTime = 0;
         GameStateHandler.getInstance().scheduleRewarp();
         if (FarmHelperConfig.customPitch) {
             setPitch(FarmHelperConfig.customPitchLevel);

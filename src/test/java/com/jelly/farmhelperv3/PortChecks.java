@@ -19,6 +19,7 @@ public final class PortChecks {
     public static void main(String[] args) throws Exception {
         FarmHelperClient.ready = true;
         checkSettingDependencies();
+        com.jelly.farmhelperv3.feature.impl.BazaarSellOrderChecks.parsers();
         var diagonal = new net.minecraft.world.phys.Vec3(0.0025, 0.0025, 0.0025);
         var trimmed = com.jelly.farmhelperv3.util.helper.PlayerSimulation.trimMovement(diagonal);
         check(trimmed.x == diagonal.x && trimmed.z == diagonal.z && trimmed.y == 0, "26.1 player cutoff uses combined horizontal speed");

@@ -7,6 +7,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(AbstractSignEditScreen.class)
 public interface AccessorGuiEditSign {
+    @Accessor("messages") String[] farmhelper$messages();
     @Accessor("line") void farmhelper$line(int line);
     @Invoker("setMessage") void farmhelper$setMessage(String text);
     @Invoker("onDone") void farmhelper$done();

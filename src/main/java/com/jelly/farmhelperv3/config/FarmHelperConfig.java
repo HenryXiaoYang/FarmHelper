@@ -1937,6 +1937,12 @@ public class FarmHelperConfig extends NativeConfig {
     public static boolean autoSellMarketType = false;
 
     @Setting(kind = Setting.Kind.SWITCH,
+            name = "Use Bazaar Sell Orders", category = AUTO_SELL, subcategory = "Auto Sell",
+            description = "List farming items at Same as Best Offer instead of instant selling. On Garden spawn returns, claim and reprice this session's orders with no price-drop limit. Manual/older orders are left alone. Blocked sales keep items and resume farming."
+    )
+    public static boolean autoSellBazaarOrders = false;
+
+    @Setting(kind = Setting.Kind.SWITCH,
             name = "Sell Items In Sacks", category = AUTO_SELL, subcategory = "Auto Sell",
             description = "Sells items in your sacks and inventory"
     )
@@ -2611,6 +2617,7 @@ public class FarmHelperConfig extends NativeConfig {
 
         this.addDependency("inventoryFullTime", "enableAutoSell");
         this.addDependency("autoSellMarketType", "enableAutoSell");
+        this.addDependency("autoSellBazaarOrders", "Enable Auto Sell and select Bazaar", () -> enableAutoSell && !autoSellMarketType);
         this.addDependency("autoSellSacks", "enableAutoSell");
         this.addDependency("autoSellSacksPlacement", "enableAutoSell");
         this.addDependency("autoSellFunction", "enableAutoSell");

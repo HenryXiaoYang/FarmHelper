@@ -277,7 +277,7 @@ public class MacroHandler {
         if (!isMacroToggled() || mc.player == null || mc.level == null) return;
         currentMacro.ifPresent(cm -> {
             if (!cm.isPaused()) return;
-            mc.mouseHandler.grabMouse();
+            UngrabMouse.getInstance().regrabMouse(true);
             resume = true;
             cm.onEnable();
             resume = false;
@@ -295,7 +295,7 @@ public class MacroHandler {
             mc.player.closeContainer();
             // Fixed issue #180 for Mac users (mouse vanishing glitch)
             if (!System.getProperty("os.name").contains("Mac")) {
-                mc.mouseHandler.grabMouse();
+                UngrabMouse.getInstance().regrabMouse(true);
             }
             startingUp = true;
             PlayerUtils.itemChangedByStaff = false;
@@ -494,6 +494,7 @@ public class MacroHandler {
             });
             beforeTeleportationPos = Optional.empty();
             rewarpTeleport = false;
+            if (PlayerUtils.isStandingOnSpawnPoint()) AutoSell.getInstance().onSpawnReturn();
         } else {
             if (System.currentTimeMillis() - MacroHandler.getInstance().getLastTpTry() > 5_000) {
                 LogUtils.sendDebug("Teleporting again");
@@ -548,7 +549,7 @@ public class MacroHandler {
             AutoPestExchange.getInstance().start();
             return true;
         }
-        return false;
+        return AutoSell.getInstance().tryManageOrdersAtSpawn();
     }
 
     @AllArgsConstructor
