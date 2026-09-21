@@ -184,3 +184,10 @@ Compared against [mkram17/Bazaar-Utils at 4ed4679](https://github.com/mkram17/Ba
 - Removed automatic cancellation/repricing along with its market-price dependency. Spawn-return management only claims completed orders confidently owned by this session. Unfilled/manual orders are left alone.
 - Product and quantity checks remain. The confirmation/order UI price is read only as part of an order's identity; it is not compared with a quote or an external price. Unknown custom items cannot fall back to NPC selling merely because API data is absent; only an explicit native Bazaar rejection can mark them unavailable for listing.
 - Automatic inventory-triggered sales wait for rewarps to finish before opening menus. Regression checks cover immediate command dispatch without a price request, successful GUI-only listing, retained unfilled orders, completed-order claims, and product-classification guards.
+
+## Native bulk coin claim (post-release 3.0.2 change)
+
+- Replaced per-order claiming with the native bulk coin-claim control. Removed the session-owned-order queue and its spawn-return gate, so claiming also works for manual orders, older orders and available proceeds from partial fills.
+- Check the order menu first, then the Bazaar overview if needed. Match a dedicated coin-claim label, or a generic claim-all label with sell-coin context; item/mixed buy-order claim controls are excluded. Send one left-click, allow a short GUI settling delay, then resume. No cancellation, repricing or external price request is involved.
+- Claiming is a single native request, not repeated clicks or a guarantee that every server-side credit has completed. Missing/ambiguous controls are reported and left untouched. Fixtures cover order/overview layouts, no session ledger, empty balances, item-claim exclusion and no repeated request while responses arrive.
+- The feature exists in Hypixel's [0.20.5 release notes](https://hypixel.net/threads/hypixel-skyblock-0-20-5-artist%E2%80%99s-abode.5738722/). Live button interaction was not exercised: the game window closed before menu inspection could proceed.

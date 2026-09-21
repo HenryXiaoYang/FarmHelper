@@ -34,6 +34,11 @@ public final class BazaarSellOrderChecks {
         check(!validConfirmation(details, "Enchanted Wheat", 64), "Wrong product rejected");
         check(!validConfirmation(details, "Wheat", 63), "Wrong quantity rejected");
         check(validConfirmation(List.of("Selling: Wheat", "Amount: 64x"), "Wheat", 64), "Confirmation checks product and quantity, not a market price");
+        check(isClaimAllCoins("Claim All Coins", List.of()), "Recognize the dedicated coin button");
+        check(isClaimAllCoins("Claim All", List.of("Claim coins from sell orders")), "Generic claim-all requires coin-only context");
+        check(!isClaimAllCoins("Claim All Items", List.of("Value: 100 coins")), "Never mistake an item-claim button for coins");
+        check(!isClaimAllCoins("Claim All", List.of("Coins and items from buy orders")), "Do not claim mixed buy-order items");
+        check(!isClaimAllCoins("Claim All", List.of("Claim coins and items")), "Generic mixed claims are excluded even without a buy-order label");
         System.out.println("FH CHECKS: Bazaar order parsing, exact confirmations, ambiguity and product/quantity guards passed");
     }
 
@@ -104,22 +109,38 @@ public final class BazaarSellOrderChecks {
             for (int i = 0; i < 5; i++) tick(engine);
             check(clicks.count == submittedClicks, "Delayed submission replies never repeat confirmation");
             menu(mc, "Your Bazaar Orders", order(mc, 96, 3, false)); tick(engine); tick(engine);
-            check(!engine.hasManagedOrders(), "An order menu alone cannot confirm submission before inventory updates");
+            check(state(engine) == State.ORDERS, "An order menu alone cannot confirm submission before inventory updates");
             inventory.setItem(0, ItemStack.EMPTY); inventory.setItem(9, ItemStack.EMPTY);
             tick(engine); tick(engine);
-            check(engine.hasManagedOrders(), "New unique order plus inventory delta establishes ownership");
+            check(engine.done(), "New order plus inventory delta confirms submission");
             tick(engine); check(engine.done(), "Regular sale finishes without waiting for fill");
 
-            // No market checks: unfilled orders stay listed; only completed owned orders are claimed.
+            engine.clearSession();
+            start(engine, true); // No session-owned orders: still open Bazaar for native claim-all.
+            menu(mc, "Your Bazaar Orders", item("SELL Manual Order", "", 1, "Partially filled"),
+                    item("Claim All Coins", "", 1, "Claim coins from all sell orders!"));
+            int claimClicks = clicks.count; tick(engine);
+            check(state(engine) == State.CLAIMED && clicks.count == claimClicks + 1 && clicks.lastClick.slotNum() == 1,
+                    "Use one bulk coin button even for old/manual/partial orders without parsing individual orders");
+            for (int i = 0; i < 5; i++) tick(engine);
+            check(engine.done() && clicks.count == claimClicks + 1, "Bulk coin claim is requested once, never repeated while replies arrive");
+
             start(engine, true);
-            menu(mc, "Your Bazaar Orders", order(mc, 96, 3, false));
-            int unfilledClicks = clicks.count; tick(engine); tick(engine);
-            check(engine.done() && engine.hasManagedOrders() && clicks.count == unfilledClicks, "Unfilled orders are not cancelled or repriced");
+            menu(mc, "Your Bazaar Orders", item("Claim All Coins", "", 1, "No coins to claim"));
+            claimClicks = clicks.count; tick(engine);
+            check(engine.done() && clicks.count == claimClicks, "An empty coin-claim control is not clicked");
+
             start(engine, true);
-            menu(mc, "Your Bazaar Orders", order(mc, 96, 3, true)); tick(engine); tick(engine);
-            check(state(engine) == State.CLAIMED, "Completed managed order is claimed"); tick(engine);
-            menu(mc, "Your Bazaar Orders"); tick(engine); tick(engine); tick(engine);
-            check(engine.done() && !engine.hasManagedOrders(), "Claim verified by order removal");
+            menu(mc, "Your Bazaar Orders", item("Claim All Items", "", 1, "Claim your bought items"));
+            tick(engine); check(state(engine) == State.CLAIM_ALL, "Look on the Bazaar overview if orders lacks the bulk coin button");
+            menu(mc, "Bazaar ➜ Farming", item("Claim All", "", 1, "Claim all coins from sell orders!"));
+            claimClicks = clicks.count; tick(engine); tick(engine);
+            check(engine.done() && clicks.count == claimClicks + 1, "Overview coin button is supported without claiming buy-order items");
+
+            start(engine, true); menu(mc, "Your Bazaar Orders"); tick(engine);
+            menu(mc, "Bazaar ➜ Farming", item("Claim All Items", "", 1, "Click to claim items"));
+            claimClicks = clicks.count; tick(engine);
+            check(engine.done() && clicks.count == claimClicks, "Missing coin button does not fall back to item claims or per-order clicks");
 
             // A mismatched confirmation must never emit a container click.
             set(engine, "product", new Product("WHEAT", "Wheat")); set(engine, "amount", 37); set(engine, "price", new BigDecimal("2"));
@@ -158,14 +179,8 @@ public final class BazaarSellOrderChecks {
             check(engine.failure().contains("Unexpected Bazaar page"), "Timeout diagnostics identify the actual screen");
 
             engine.stop();
-            var owned = (Map<Key, Product>)get(engine, "owned");
-            var key = new Key("Wheat", 64, new BigDecimal("2")); owned.put(key, new Product("WHEAT", "Wheat"));
-            start(engine, true);
-            menu(mc, "Your Bazaar Orders", order(mc, 64, 2, false), order(mc, 64, 2, false)); before = clicks.count;
-            tick(engine); tick(engine);
-            check(engine.done() && clicks.count == before && !engine.hasManagedOrders(), "Ambiguous manual/managed matches are untouched");
-            owned.put(key, new Product("WHEAT", "Wheat"));
-            engine.clearSession(); check(!engine.hasManagedOrders(), "World/session exit forgets ownership");
+            var key = new Key("Wheat", 64, new BigDecimal("2"));
+            engine.clearSession();
 
             // Full-slot rejection: no new order appears and items stay in the inventory.
             set(engine, "product", new Product("WHEAT", "Wheat")); set(engine, "submitted", key);
@@ -177,10 +192,10 @@ public final class BazaarSellOrderChecks {
             check(engine.failure() != null && inventory.getItem(0).getCount() == 64 && clicks.count == before,
                     "Order rejection/full slots retains items and never retries or instant-sells");
             engine.stop();
-            owned.put(key, new Product("WHEAT", "Wheat"));
+            start(engine, true);
             menu(mc, "Your Bazaar Orders", order(mc, 64, 2, false));
             com.jelly.farmhelperv3.util.InventoryUtils.clickContainerSlot(0, com.jelly.farmhelperv3.util.InventoryUtils.ClickType.RIGHT, com.jelly.farmhelperv3.util.InventoryUtils.ClickMode.PICKUP);
-            check(!engine.hasManagedOrders(), "Manual Bazaar interaction invalidates ownership");
+            check(engine.failure() != null, "Manual Bazaar interaction interrupts automated claiming");
             engine.stop(); set(engine, "managementOnly", false); set(engine, "state", State.SEARCH); set(engine, "product", new Product("TEST_RUNE", "Test Rune"));
             check(!engine.isConfirmedNonBazaarItem("TEST_RUNE"), "No price data never means an item is NPC-only");
             check(engine.onMissingProduct() && engine.isConfirmedNonBazaarItem("TEST_RUNE"), "Only the native Bazaar rejection marks a product unavailable");
@@ -188,7 +203,7 @@ public final class BazaarSellOrderChecks {
             engine.clearSession();
             check(!engine.isConfirmedNonBazaarItem("TEST_RUNE"), "World changes clear native product classification");
             spawnAndSacks(mc);
-            System.out.println("FH CHECKS: Bazaar menu transactions, delayed replies, ownership, unfilled-order preservation, claims, protected items and opt-in settings passed");
+            System.out.println("FH CHECKS: Bazaar menu transactions, delayed replies, ownership, bulk coin claims, protected items and opt-in settings passed");
         } finally {
             Events.BUS.unregister(clicks); engine.clearSession();
             for (int i = 0; i < 36; i++) inventory.setItem(i, saved.get(i));
@@ -216,15 +231,13 @@ public final class BazaarSellOrderChecks {
             FarmHelperConfig.spawnPosX = mc.player.blockPosition().getX(); FarmHelperConfig.spawnPosY = mc.player.blockPosition().getY(); FarmHelperConfig.spawnPosZ = mc.player.blockPosition().getZ();
             FarmHelperConfig.macroGuiDelay = FarmHelperConfig.macroGuiDelayRandomness = 0;
             handler.setMacroToggled(true); handler.getAfterRewarpDelay().reset();
-            var owned = (Map<Key, Product>)get(engine, "owned");
-            owned.put(new Key("Wheat", 64, new BigDecimal("2")), new Product("WHEAT", "Wheat"));
             check(!auto.tryManageOrdersAtSpawn(), "Initial farming start at spawn must not manage orders");
             auto.onSpawnReturn();
             handler.getAfterRewarpDelay().schedule(1500);
             check(auto.tryManageOrdersAtSpawn() && !auto.isRunning(), "Wait for confirmed return settling before opening a menu");
             handler.getAfterRewarpDelay().reset();
             check(auto.tryManageOrdersAtSpawn() && auto.isRunning() && (boolean)get(auto, "managementOnly"),
-                    "One return starts order management; owned=" + engine.hasManagedOrders() + ", features="
+                    "One return starts bulk claiming without a session order ledger; features="
                             + com.jelly.farmhelperv3.feature.FeatureManager.getInstance().getPauseExecutionFeatures()
                             + ", failsafes=" + com.jelly.farmhelperv3.failsafe.FailsafeManager.getInstance().getEmergencyQueue());
             check(!auto.tryManageOrdersAtSpawn(), "Consumed return cannot retrigger management");
@@ -269,7 +282,7 @@ public final class BazaarSellOrderChecks {
             check(!auto.isRunning() && auto.getDontEnableForClock().getRemainingTime() > 290_000, "Rejected order ends Auto Sell and backs off for five minutes");
             check(mc.player.getInventory().getItem(1).getCount() == 32, "Rejected order retains the sack items");
             auto.onWorldUnload(new Events.WorldEvent.Unload(mc.level));
-            check(!engine.hasManagedOrders() && !(boolean)get(auto, "spawnReturnPending"), "World unload clears both ownership and spawn triggers");
+            check(state(engine) == State.IDLE && !(boolean)get(auto, "spawnReturnPending"), "World unload clears pending claim work and spawn triggers");
         } finally {
             handler.setMacroToggled(false); if (auto.isRunning()) auto.stop(); auto.getDontEnableForClock().reset(); engine.clearSession();
             handler.setMacroToggled(toggled); set(game, "location", location); set(game, "cookieBuffState", cookie);

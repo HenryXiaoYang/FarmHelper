@@ -211,7 +211,7 @@ public class AutoSell implements IFeature {
         if (!MacroHandler.getInstance().getAfterRewarpDelay().passed()) return true;
         // Consume before opening the GUI; resumeMacro must never re-arm this check.
         spawnReturnPending = false;
-        if (!sellOrders.hasManagedOrders() || isRunning() || !MacroHandler.getInstance().isMacroToggled()
+        if (isRunning() || !MacroHandler.getInstance().isMacroToggled()
                 || !GameStateHandler.getInstance().inGarden()
                 || FailsafeManager.getInstance().triggeredFailsafe.isPresent()
                 || !FailsafeManager.getInstance().getEmergencyQueue().isEmpty()
