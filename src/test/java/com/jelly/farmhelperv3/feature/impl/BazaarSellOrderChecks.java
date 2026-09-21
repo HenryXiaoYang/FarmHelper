@@ -98,8 +98,9 @@ public final class BazaarSellOrderChecks {
             menu(mc, "Bazaar ➜ \"Wheat\"", item("Wheat", "WHEAT", 1)); tick(engine);
             menu(mc, "Farming ➜ Wheat", item("Wheat", "WHEAT", 1), item("Create Sell Offer", "", 1)); tick(engine);
             check(state(engine) == State.AMOUNT, "Product breadcrumbs need not start with Bazaar");
-            menu(mc, "How many are you selling?", item("Sell whole inventory!", "", 1, "Amount: 96x")); tick(engine);
-            menu(mc, "At what price are you selling?", item("Same as Best Offer", "", 1, "Price per unit: 3 coins")); tick(engine);
+            check(clicks.lastClick.buttonNum() == 0, "Whole-inventory listing uses the default left-click flow");
+            // Default whole-inventory offer may skip the quantity menu entirely.
+            menu(mc, "At what price are you selling?", item("Same as Best Offer", "", 1, "Price per unit: 3 coins")); tick(engine); tick(engine);
             menu(mc, "Confirm Sell Offer", item("Sell Offer", "", 1, "Selling: Wheat", "Amount: 96x", "Price per unit: 3 coins"));
             mc.player.containerMenu.getSlot(12).set(mc.player.containerMenu.getSlot(13).getItem());
             mc.player.containerMenu.getSlot(13).set(ItemStack.EMPTY); // BU preview uses 12; live matcher uses 13.
@@ -129,8 +130,9 @@ public final class BazaarSellOrderChecks {
             inventory.setItem(0, item("Wheat", "WHEAT", 45)); tick(engine);
             check((int)get(engine, "amount") == 37 && !engine.hasManagedOrders(), "Relist only actual 37 returned items, not original 96");
             menu(mc, "Farming ➜ Wheat", item("Wheat", "WHEAT", 1), item("Create Sell Offer", "", 1)); tick(engine); tick(engine);
+            check(clicks.lastClick.buttonNum() == 1, "Partial relist requests a custom quantity with right-click");
             menu(mc, "How many are you selling?", item("Sell whole inventory!", "", 1, "Amount: 45x"), item("Custom Amount", "", 1, "Inventory: 45 items")); tick(engine);
-            check(state(engine) == State.SIGN, "Relist selects Custom Amount from the amount screen, not a product-page right click");
+            check(state(engine) == State.SIGN, "Relist selects Custom Amount when the server opens the quantity menu");
             sign(mc, "Enter amount", "to sell"); tick(engine);
             check(clicks.sign != null && clicks.sign.getLines()[0].equals("37") && clicks.sign.getLines()[3].equals("to sell"), "Native sign packet contains only the returned quantity and preserves the sell prompt");
             menu(mc, "At what price are you selling?", item("Same as Best Offer", "", 1, "Price per unit: 2 coins")); tick(engine);
@@ -157,6 +159,23 @@ public final class BazaarSellOrderChecks {
             ((Clock)get(engine, "timeout")).schedule(12_000);
             sign(mc, "Enter price", "per unit"); clicks.sign = null; tick(engine);
             check(engine.failure() != null && clicks.sign == null, "Price/buy signs never receive a sell quantity");
+
+            // The server can open the sell-amount sign directly after the product click.
+            engine.stop(); set(engine, "state", State.AMOUNT); set(engine, "amount", 37);
+            ((Clock)get(engine, "timeout")).schedule(12_000);
+            sign(mc, "Enter amount", "to sell"); clicks.sign = null; tick(engine);
+            check(state(engine) == State.PRICE && clicks.sign != null && clicks.sign.getLines()[0].equals("37"), "Direct amount signs are validated and filled without waiting for a container");
+
+            engine.stop(); set(engine, "state", State.AMOUNT); set(engine, "amount", 64);
+            ((Clock)get(engine, "timeout")).schedule(12_000);
+            menu(mc, "How many are you selling?", item("Sell whole inventory!", "", 1, "Amount: 64x"));
+            before = clicks.count; tick(engine);
+            check(state(engine) == State.PRICE && clicks.count == before + 1, "The quantity-preset menu remains supported");
+
+            engine.stop(); set(engine, "state", State.AMOUNT);
+            ((Clock)get(engine, "timeout")).schedule(-1);
+            menu(mc, "Unexpected Bazaar page"); tick(engine);
+            check(engine.failure().contains("Unexpected Bazaar page"), "Timeout diagnostics identify the actual screen");
 
             engine.stop();
             var owned = (Map<Key, Product>)get(engine, "owned");
@@ -327,10 +346,11 @@ public final class BazaarSellOrderChecks {
     public static final class Clicks {
         private final BazaarSellOrders engine;
         int count;
+        ServerboundContainerClickPacket lastClick;
         net.minecraft.network.protocol.game.ServerboundSignUpdatePacket sign;
         Clicks(BazaarSellOrders engine) { this.engine = engine; }
         @Events.SubscribeEvent public void packet(SendPacketEvent event) {
-            if (event.packet instanceof ServerboundContainerClickPacket click) { count++; engine.onClick(click); }
+            if (event.packet instanceof ServerboundContainerClickPacket click) { count++; lastClick = click; engine.onClick(click); }
             if (event.packet instanceof net.minecraft.network.protocol.game.ServerboundSignUpdatePacket packet) sign = packet;
         }
     }

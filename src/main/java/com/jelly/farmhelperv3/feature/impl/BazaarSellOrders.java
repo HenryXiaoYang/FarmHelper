@@ -101,7 +101,10 @@ public final class BazaarSellOrders {
 
     public void tick() {
         if (state == State.IDLE || state == State.DONE || state == State.FAILED) return;
-        if (timeout.passed()) { fail("Timed out waiting for " + state + "; no transaction will be repeated"); return; }
+        if (timeout.passed()) {
+            String screen = mc.screen == null ? "none" : clean(mc.screen.getTitle().getString());
+            fail("Timed out waiting for " + state + " (screen: " + screen + "); no transaction will be repeated"); return;
+        }
         if (!delay.passed()) return;
         try {
             tickState();
@@ -119,6 +122,7 @@ public final class BazaarSellOrders {
             openOrders(ReadOrders.BASELINE);
             return;
         }
+        if (state == State.AMOUNT && mc.screen instanceof AbstractSignEditScreen) next(State.SIGN);
         if (state == State.SIGN) {
             if (!(mc.screen instanceof AbstractSignEditScreen)) return;
             if (!SignUtils.hasPrompt("Enter amount", "to sell")) { fail("Unexpected sign prompt; refusing to enter a sell quantity"); return; }
@@ -149,9 +153,15 @@ public final class BazaarSellOrders {
                 Slot create = nativeButton(16, "Create Sell Offer");
                 if (create == null) break;
                 if (inventoryCount(product.id) < amount || amount <= 0) { fail("Inventory changed before listing " + product.name); break; }
-                click(create, false); next(State.AMOUNT);
+                // Left-click may default to the whole inventory and go straight to price.
+                // Right-click requests a custom quantity for a partial cancellation/relist.
+                click(create, amount != inventoryCount(product.id)); next(State.AMOUNT);
             }
             case AMOUNT -> {
+                if ("At what price are you selling?".equals(title)) {
+                    // The confirmation screen still has to match our exact planned quantity.
+                    next(State.PRICE); break;
+                }
                 if (!"How many are you selling?".equals(title)) break;
                 Slot preset = slots().stream().filter(s -> (s.index == 10 || s.index == 12 || s.index == 14)
                         && Set.of("Sell a stack!", "Sell half your inventory!", "Sell whole inventory!").contains(clean(s.getItem().getHoverName().getString()))
