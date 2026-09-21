@@ -1,6 +1,5 @@
 package com.jelly.farmhelperv3.feature.impl;
 
-import com.google.gson.JsonParser;
 import com.jelly.farmhelperv3.FarmHelper;
 import com.jelly.farmhelperv3.config.FarmHelperConfig;
 import com.jelly.farmhelperv3.event.Events;
@@ -17,7 +16,6 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.item.component.*;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import static com.jelly.farmhelperv3.feature.impl.BazaarSellOrders.*;
 
 /** Synthetic menus cross-checked against Bazaar-Utils 4ed4679: BazaarSlots, BazaarScreenType,
@@ -32,22 +30,11 @@ public final class BazaarSellOrderChecks {
         check(parseOrder(12, "BUY Wheat", List.of("Order amount: 64x", "Price per unit: 3 coins")) == null, "Never adopt buy orders");
         check(parseOrder(12, "SELL Wheat", List.of("Offer amount: 64x")) == null, "Incomplete order data is rejected");
         var details = List.of("Selling: Wheat", "Amount: 64x", "Price per unit: 3.0 coins");
-        check(validConfirmation(details, "Wheat", 64, new BigDecimal("3")), "Exact confirmation accepted");
-        check(!validConfirmation(details, "Enchanted Wheat", 64, new BigDecimal("3")), "Wrong product rejected");
-        check(!validConfirmation(details, "Wheat", 63, new BigDecimal("3")), "Wrong quantity rejected");
-        check(!validConfirmation(details, "Wheat", 64, new BigDecimal("2.9")), "Changed price rejected");
-        check(undercut(partial.key(), new BigDecimal("0.1")), "User permits repricing without a price-drop floor");
-        check(!undercut(partial.key(), partial.key().price()) && !undercut(partial.key(), null), "Unchanged/missing prices never cancel an order");
-        check(cancellationAmount(List.of("You will be refunded 1,234x items.")) == 1234, "Sell cancellation refund lore");
-        check(cancellationAmount(List.of("1,234x missing items.")) == -1, "Buy cancellation cannot be mistaken for a sell cancellation");
-        var prices = parsePrices(JsonParser.parseString("""
-            {"success":true,"lastUpdated":123,"products":{
-              "WHEAT":{"buy_summary":[{"pricePerUnit":3.1},{"pricePerUnit":3}],"sell_summary":[{"pricePerUnit":1}]},
-              "EMPTY":{"buy_summary":[]}}}
-            """).getAsJsonObject());
-        check(prices.offers().get("WHEAT").compareTo(new BigDecimal("3")) == 0, "Match lowest sell offer, not an instant-sell bid or weighted average");
-        check(prices.offers().containsKey("EMPTY") && prices.offers().get("EMPTY") == null, "Empty order book is still a Bazaar product, never an NPC fallback");
-        System.out.println("FH CHECKS: Bazaar order parsing, exact confirmations, ambiguity and price policy passed");
+        check(validConfirmation(details, "Wheat", 64), "Exact confirmation accepted");
+        check(!validConfirmation(details, "Enchanted Wheat", 64), "Wrong product rejected");
+        check(!validConfirmation(details, "Wheat", 63), "Wrong quantity rejected");
+        check(validConfirmation(List.of("Selling: Wheat", "Amount: 64x"), "Wheat", 64), "Confirmation checks product and quantity, not a market price");
+        System.out.println("FH CHECKS: Bazaar order parsing, exact confirmations, ambiguity and product/quantity guards passed");
     }
 
     private static int menuId = 200;
@@ -93,6 +80,12 @@ public final class BazaarSellOrderChecks {
 
             inventory.setItem(0, item("Wheat", "WHEAT", 64));
             inventory.setItem(9, item("Wheat", "WHEAT", 32));
+            engine.begin(false);
+            tick(engine);
+            check(state(engine) == State.ORDERS, "Auto Sell opens Bazaar orders immediately without fetching prices");
+            var tasks = net.minecraft.util.thread.BlockableEventLoop.class.getDeclaredMethod("runAllTasks"); tasks.setAccessible(true); tasks.invoke(mc);
+            check(clicks.commands.getLast().equals("managebazaarorders"), "Opening Bazaar sends the native command immediately");
+            engine.stop();
             start(engine, false);
             menu(mc, "Your Bazaar Orders"); tick(engine); tick(engine); // baseline -> next -> search
             menu(mc, "Bazaar ➜ \"Wheat\"", item("Wheat", "WHEAT", 1)); tick(engine);
@@ -100,7 +93,7 @@ public final class BazaarSellOrderChecks {
             check(state(engine) == State.AMOUNT, "Product breadcrumbs need not start with Bazaar");
             check(clicks.lastClick.buttonNum() == 0, "Whole-inventory listing uses the default left-click flow");
             // Default whole-inventory offer may skip the quantity menu entirely.
-            menu(mc, "At what price are you selling?", item("Same as Best Offer", "", 1, "Price per unit: 3 coins")); tick(engine); tick(engine);
+            menu(mc, "At what price are you selling?", item("Same as Best Offer", "", 1)); tick(engine); tick(engine);
             menu(mc, "Confirm Sell Offer", item("Sell Offer", "", 1, "Selling: Wheat", "Amount: 96x", "Price per unit: 3 coins"));
             mc.player.containerMenu.getSlot(12).set(mc.player.containerMenu.getSlot(13).getItem());
             mc.player.containerMenu.getSlot(13).set(ItemStack.EMPTY); // BU preview uses 12; live matcher uses 13.
@@ -117,32 +110,13 @@ public final class BazaarSellOrderChecks {
             check(engine.hasManagedOrders(), "New unique order plus inventory delta establishes ownership");
             tick(engine); check(engine.done(), "Regular sale finishes without waiting for fill");
 
-            // Manage a partially filled order; use actual returned inventory, not its rounded fill display.
-            inventory.setItem(0, item("Wheat", "WHEAT", 8)); // Existing stock must not be included in the relist.
+            // No market checks: unfilled orders stay listed; only completed owned orders are claimed.
             start(engine, true);
-            menu(mc, "Your Bazaar Orders", order(mc, 96, 3, false)); tick(engine); tick(engine);
-            check(state(engine) == State.CANCEL, "Undercut owned order opens management");
-            menu(mc, "Order options", item("Cancel Order", "", 1, "You will be refunded 37x items.")); tick(engine); tick(engine);
-            int cancelledClicks = clicks.count;
-            menu(mc, "Your Bazaar Orders"); tick(engine); tick(engine);
-            check(state(engine) == State.ORDERS, "Cancellation waits for returned items");
-            check(clicks.count == cancelledClicks, "Cancellation cannot repeat while waiting");
-            inventory.setItem(0, item("Wheat", "WHEAT", 45)); tick(engine);
-            check((int)get(engine, "amount") == 37 && !engine.hasManagedOrders(), "Relist only actual 37 returned items, not original 96");
-            menu(mc, "Farming ➜ Wheat", item("Wheat", "WHEAT", 1), item("Create Sell Offer", "", 1)); tick(engine); tick(engine);
-            check(clicks.lastClick.buttonNum() == 1, "Partial relist requests a custom quantity with right-click");
-            menu(mc, "How many are you selling?", item("Sell whole inventory!", "", 1, "Amount: 45x"), item("Custom Amount", "", 1, "Inventory: 45 items")); tick(engine);
-            check(state(engine) == State.SIGN, "Relist selects Custom Amount when the server opens the quantity menu");
-            sign(mc, "Enter amount", "to sell"); tick(engine);
-            check(clicks.sign != null && clicks.sign.getLines()[0].equals("37") && clicks.sign.getLines()[3].equals("to sell"), "Native sign packet contains only the returned quantity and preserves the sell prompt");
-            menu(mc, "At what price are you selling?", item("Same as Best Offer", "", 1, "Price per unit: 2 coins")); tick(engine);
-            menu(mc, "Confirm Sell Offer", item("Sell Offer", "", 1, "Selling: Wheat", "Amount: 37x", "Price per unit: 2 coins")); tick(engine); tick(engine);
-            inventory.setItem(0, item("Wheat", "WHEAT", 8));
-            menu(mc, "Your Bazaar Orders", order(mc, 37, 2, true)); tick(engine); tick(engine); tick(engine);
-            check(engine.done() && engine.hasManagedOrders(), "Replacement is owned but not reprocessed in the same pass");
-
+            menu(mc, "Your Bazaar Orders", order(mc, 96, 3, false));
+            int unfilledClicks = clicks.count; tick(engine); tick(engine);
+            check(engine.done() && engine.hasManagedOrders() && clicks.count == unfilledClicks, "Unfilled orders are not cancelled or repriced");
             start(engine, true);
-            menu(mc, "Your Bazaar Orders", order(mc, 37, 2, true)); tick(engine); tick(engine);
+            menu(mc, "Your Bazaar Orders", order(mc, 96, 3, true)); tick(engine); tick(engine);
             check(state(engine) == State.CLAIMED, "Completed managed order is claimed"); tick(engine);
             menu(mc, "Your Bazaar Orders"); tick(engine); tick(engine); tick(engine);
             check(engine.done() && !engine.hasManagedOrders(), "Claim verified by order removal");
@@ -165,6 +139,12 @@ public final class BazaarSellOrderChecks {
             ((Clock)get(engine, "timeout")).schedule(12_000);
             sign(mc, "Enter amount", "to sell"); clicks.sign = null; tick(engine);
             check(state(engine) == State.PRICE && clicks.sign != null && clicks.sign.getLines()[0].equals("37"), "Direct amount signs are validated and filled without waiting for a container");
+
+            engine.stop(); set(engine, "state", State.AMOUNT); set(engine, "amount", 37);
+            set(engine, "product", new Product("WHEAT", "Wheat"));
+            ((Clock)get(engine, "timeout")).schedule(12_000);
+            menu(mc, "How many are you selling?", item("Custom Amount", "", 1, "Inventory: 64 items")); tick(engine);
+            check(state(engine) == State.SIGN, "Custom amounts still use the native sign when no preset matches");
 
             engine.stop(); set(engine, "state", State.AMOUNT); set(engine, "amount", 64);
             ((Clock)get(engine, "timeout")).schedule(12_000);
@@ -201,8 +181,14 @@ public final class BazaarSellOrderChecks {
             menu(mc, "Your Bazaar Orders", order(mc, 64, 2, false));
             com.jelly.farmhelperv3.util.InventoryUtils.clickContainerSlot(0, com.jelly.farmhelperv3.util.InventoryUtils.ClickType.RIGHT, com.jelly.farmhelperv3.util.InventoryUtils.ClickMode.PICKUP);
             check(!engine.hasManagedOrders(), "Manual Bazaar interaction invalidates ownership");
+            engine.stop(); set(engine, "managementOnly", false); set(engine, "state", State.SEARCH); set(engine, "product", new Product("TEST_RUNE", "Test Rune"));
+            check(!engine.isConfirmedNonBazaarItem("TEST_RUNE"), "No price data never means an item is NPC-only");
+            check(engine.onMissingProduct() && engine.isConfirmedNonBazaarItem("TEST_RUNE"), "Only the native Bazaar rejection marks a product unavailable");
+            check(!engine.onMissingProduct(), "Unrelated messages outside product search cannot reclassify items");
+            engine.clearSession();
+            check(!engine.isConfirmedNonBazaarItem("TEST_RUNE"), "World changes clear native product classification");
             spawnAndSacks(mc);
-            System.out.println("FH CHECKS: Bazaar menu transactions, delayed replies, ownership, partial fills, claims, protected items and opt-in settings passed");
+            System.out.println("FH CHECKS: Bazaar menu transactions, delayed replies, ownership, unfilled-order preservation, claims, protected items and opt-in settings passed");
         } finally {
             Events.BUS.unregister(clicks); engine.clearSession();
             for (int i = 0; i < 36; i++) inventory.setItem(i, saved.get(i));
@@ -277,7 +263,7 @@ public final class BazaarSellOrderChecks {
             auto.getDelayClock().reset(); auto.onTickEnabled(new Events.TickEvent.ClientTickEvent(Events.TickEvent.Phase.START));
             check(auto.getSacksState() == AutoSell.SacksState.CLOSE_MENU && !(boolean)get(auto, "emptySacks"), "A withdrawn sack batch closes for listing instead of bulk instant selling");
             auto.getDelayClock().reset(); auto.onTickEnabled(new Events.TickEvent.ClientTickEvent(Events.TickEvent.Phase.START));
-            check(state(engine) == State.PRICES && auto.getMarketType() == AutoSell.MarketType.BAZAAR, "Sack batches route back into sell orders");
+            check(state(engine) == State.ORDERS && auto.getMarketType() == AutoSell.MarketType.BAZAAR, "Sack batches route back into sell orders");
             set(engine, "failure", "Order slots full"); set(engine, "state", State.FAILED);
             auto.getDelayClock().reset(); auto.onTickEnabled(new Events.TickEvent.ClientTickEvent(Events.TickEvent.Phase.START));
             check(!auto.isRunning() && auto.getDontEnableForClock().getRemainingTime() > 290_000, "Rejected order ends Auto Sell and backs off for five minutes");
@@ -294,8 +280,7 @@ public final class BazaarSellOrderChecks {
     }
     private static void start(BazaarSellOrders engine, boolean management) throws Exception {
         engine.begin(management);
-        set(engine, "priceRequest", CompletableFuture.completedFuture(new Prices(System.currentTimeMillis(), Map.of("WHEAT", new BigDecimal("2")))));
-        tick(engine); // prices -> /managebazaarorders
+        tick(engine); // No price request: wait directly for the in-game order list.
     }
     private static void tick(BazaarSellOrders engine) throws Exception { ((Clock)get(engine, "delay")).reset(); engine.tick(); }
     private static State state(BazaarSellOrders engine) throws Exception { return (State)get(engine, "state"); }
@@ -346,10 +331,12 @@ public final class BazaarSellOrderChecks {
     public static final class Clicks {
         private final BazaarSellOrders engine;
         int count;
+        final List<String> commands = new ArrayList<>();
         ServerboundContainerClickPacket lastClick;
         net.minecraft.network.protocol.game.ServerboundSignUpdatePacket sign;
         Clicks(BazaarSellOrders engine) { this.engine = engine; }
         @Events.SubscribeEvent public void packet(SendPacketEvent event) {
+            if (event.packet instanceof net.minecraft.network.protocol.game.ServerboundChatCommandPacket command) commands.add(command.command());
             if (event.packet instanceof ServerboundContainerClickPacket click) { count++; lastClick = click; engine.onClick(click); }
             if (event.packet instanceof net.minecraft.network.protocol.game.ServerboundSignUpdatePacket packet) sign = packet;
         }

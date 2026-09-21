@@ -241,6 +241,7 @@ public class AutoSell implements IFeature {
         if (mc.player == null || mc.level == null) return;
         if (!isToggled()) return;
         if (isRunning()) return;
+        if (MacroHandler.getInstance().isTeleporting()) return;
         if (!MacroHandler.getInstance().isMacroToggled()) return;
         if (!GameStateHandler.getInstance().inGarden()) return;
         if (FailsafeManager.getInstance().triggeredFailsafe.isPresent()) return;
@@ -656,7 +657,10 @@ public class AutoSell implements IFeature {
             sacksState = SacksState.CLOSE_MENU;
         }
         if (message.startsWith("[Bazaar] No items could be matched")) {
-            if (orderMode) { failOrderSale("Bazaar could not match the requested product"); return; }
+            if (orderMode) {
+                if (!sellOrders.onMissingProduct()) failOrderSale("Bazaar could not match the requested product");
+                return;
+            }
             bazaarState = BazaarState.CLOSE_MENU;
         }
     }
@@ -704,7 +708,7 @@ public class AutoSell implements IFeature {
         String name = ChatFormatting.stripFormatting(stack.getHoverName().getString());
         if (!orderMode) return shouldSell(name);
         return eligibleForSellOrder(stack) && shouldSellCustomItem(name) && !isFlowerCrop(stack)
-                && crops.stream().noneMatch(name::startsWith) && !sellOrders.isBazaarItem(InventoryUtils.skyblockId(stack));
+                && crops.stream().noneMatch(name::startsWith) && sellOrders.isConfirmedNonBazaarItem(InventoryUtils.skyblockId(stack));
     }
 
     private int farmingInventoryCount() {

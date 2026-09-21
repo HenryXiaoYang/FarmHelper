@@ -1938,7 +1938,7 @@ public class FarmHelperConfig extends NativeConfig {
 
     @Setting(kind = Setting.Kind.SWITCH,
             name = "Use Bazaar Sell Orders", category = AUTO_SELL, subcategory = "Auto Sell",
-            description = "List farming items at Same as Best Offer instead of instant selling. On Garden spawn returns, claim and reprice this session's orders with no price-drop limit. Manual/older orders are left alone. Blocked sales keep items and resume farming."
+            description = "List farming items at Same as Best Offer instead of instant selling. No external price checks. On Garden spawn returns, claim this session's completed orders; unfilled orders stay listed. Manual/older orders are left alone. Blocked sales keep items and resume farming."
     )
     public static boolean autoSellBazaarOrders = false;
 
