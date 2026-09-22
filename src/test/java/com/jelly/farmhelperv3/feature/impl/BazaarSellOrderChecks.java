@@ -92,7 +92,10 @@ public final class BazaarSellOrderChecks {
             check(clicks.commands.getLast().equals("managebazaarorders"), "Opening Bazaar sends the native command immediately");
             engine.stop();
             start(engine, false);
-            menu(mc, "Your Bazaar Orders"); tick(engine); tick(engine); // baseline -> next -> search
+            menu(mc, "Your Bazaar Orders", item("Claim All Coins", "", 1, "Claim coins from all sell orders!")); tick(engine);
+            check(state(engine) == State.CLAIMED, "Inventory-triggered selling must claim coins before opening a product");
+            engine.onChat("[Bazaar] Claiming orders..."); tick(engine);
+            menu(mc, "Your Bazaar Orders"); tick(engine); tick(engine);
             menu(mc, "Bazaar ➜ \"Wheat\"", item("Wheat", "WHEAT", 1)); tick(engine);
             menu(mc, "Farming ➜ Wheat", item("Wheat", "WHEAT", 1), item("Create Sell Offer", "", 1)); tick(engine);
             check(state(engine) == State.AMOUNT, "Product breadcrumbs need not start with Bazaar");
@@ -112,8 +115,11 @@ public final class BazaarSellOrderChecks {
             check(state(engine) == State.ORDERS, "An order menu alone cannot confirm submission before inventory updates");
             inventory.setItem(0, ItemStack.EMPTY); inventory.setItem(9, ItemStack.EMPTY);
             tick(engine); tick(engine);
-            check(engine.done(), "New order plus inventory delta confirms submission");
-            tick(engine); check(engine.done(), "Regular sale finishes without waiting for fill");
+            check(state(engine) == State.ORDERS && get(engine, "claimPhase") == ClaimPhase.AFTER_SALE, "After listing, claim proceeds again before completing the sale");
+            menu(mc, "Your Bazaar Orders", order(mc, 96, 3, true), item("Claim All Coins", "", 1, "Claim coins from all sell orders!"));
+            tick(engine); check(state(engine) == State.CLAIMED, "Post-sale coin claim is sent");
+            engine.onChat("[Bazaar] Claimed 288 coins from selling 96x Wheat at 3 each!"); tick(engine);
+            check(engine.done(), "Sale completes after the post-sale claim response");
 
             engine.clearSession();
             start(engine, true); // No session-owned orders: still open Bazaar for native claim-all.
@@ -123,7 +129,9 @@ public final class BazaarSellOrderChecks {
             check(state(engine) == State.CLAIMED && clicks.count == claimClicks + 1 && clicks.lastClick.slotNum() == 1,
                     "Use one bulk coin button even for old/manual/partial orders without parsing individual orders");
             for (int i = 0; i < 5; i++) tick(engine);
-            check(engine.done() && clicks.count == claimClicks + 1, "Bulk coin claim is requested once, never repeated while replies arrive");
+            check(state(engine) == State.CLAIMED && clicks.count == claimClicks + 1, "A delayed claim response does not complete or resend the request");
+            engine.onChat("[Bazaar] Claiming orders..."); tick(engine);
+            check(engine.done(), "Coin-claim acknowledgement allows completion");
 
             start(engine, true);
             menu(mc, "Your Bazaar Orders", item("Claim All Coins", "", 1, "No coins to claim"));
@@ -134,7 +142,8 @@ public final class BazaarSellOrderChecks {
             menu(mc, "Your Bazaar Orders", item("Claim All Items", "", 1, "Claim your bought items"));
             tick(engine); check(state(engine) == State.CLAIM_ALL, "Look on the Bazaar overview if orders lacks the bulk coin button");
             menu(mc, "Bazaar ➜ Farming", item("Claim All", "", 1, "Claim all coins from sell orders!"));
-            claimClicks = clicks.count; tick(engine); tick(engine);
+            claimClicks = clicks.count; tick(engine);
+            engine.onChat("[Bazaar] Claiming orders..."); tick(engine);
             check(engine.done() && clicks.count == claimClicks + 1, "Overview coin button is supported without claiming buy-order items");
 
             start(engine, true); menu(mc, "Your Bazaar Orders"); tick(engine);
@@ -202,6 +211,7 @@ public final class BazaarSellOrderChecks {
             check(!engine.onMissingProduct(), "Unrelated messages outside product search cannot reclassify items");
             engine.clearSession();
             check(!engine.isConfirmedNonBazaarItem("TEST_RUNE"), "World changes clear native product classification");
+            capacity(mc, engine, clicks);
             spawnAndSacks(mc);
             System.out.println("FH CHECKS: Bazaar menu transactions, delayed replies, ownership, bulk coin claims, protected items and opt-in settings passed");
         } finally {
@@ -213,6 +223,45 @@ public final class BazaarSellOrderChecks {
         }
     }
 
+    private static void capacity(Minecraft mc, BazaarSellOrders engine, Clicks clicks) throws Exception {
+        mc.player.getInventory().setItem(0, item("Wheat", "WHEAT", 64));
+        engine.clearSession(); engine.begin(false);
+        set(engine, "state", State.SUBMITTED); set(engine, "claimPhase", null);
+        set(engine, "product", new Product("WHEAT", "Wheat"));
+        ((Set<String>)get(engine, "attempted")).add("WHEAT");
+        engine.onChat("[Bazaar] You reached your maximum of 21 Bazaar orders!");
+        check(state(engine) == State.ORDERS && get(engine, "claimPhase") == ClaimPhase.RECOVERY, "Server order limit begins one claim-and-refresh recovery immediately");
+        var full = new ArrayList<ItemStack>();
+        for (int i = 0; i < 20; i++) full.add(order(mc, 64, 2, false));
+        full.add(item("BUY Carrot", "", 1, "Order amount: 1x", "By: " + mc.getUser().getName()));
+        full.add(item("Claim All Coins", "", 1, "Claim coins from all sell orders!"));
+        menu(mc, "Your Bazaar Orders", full.toArray(ItemStack[]::new));
+        int before = clicks.count; tick(engine);
+        engine.onChat("[Bazaar] You reached your maximum of 21 Bazaar orders!");
+        check(state(engine) == State.CLAIMED, "Duplicate limit messages cannot restart claim recovery");
+        engine.onChat("[Bazaar] Claiming orders..."); tick(engine);
+        menu(mc, "Your Bazaar Orders", full.toArray(ItemStack[]::new)); tick(engine); tick(engine);
+        check(engine.failure() != null && engine.failure().contains("21") && (int)get(engine, "openOrderCount") == 21,
+                "Sell and buy orders both count toward the native limit after claiming");
+        check(clicks.count == before + 1 && mc.player.getInventory().getItem(0).getCount() == 64,
+                "Still-full recovery sends no extra offer, cancels nothing and keeps inventory");
+        for (int i = 0; i < 4; i++) tick(engine);
+        check(clicks.count == before + 1, "Failure cannot keep issuing orders");
+
+        engine.clearSession(); engine.begin(false);
+        set(engine, "state", State.SUBMITTED); set(engine, "claimPhase", null);
+        set(engine, "product", new Product("WHEAT", "Wheat"));
+        ((Set<String>)get(engine, "attempted")).add("WHEAT");
+        engine.onChat("[Bazaar] You reached your maximum of 2 Bazaar orders!");
+        menu(mc, "Your Bazaar Orders", order(mc, 64, 2, true), item("BUY Carrot", "", 1), item("Claim All Coins", "", 1)); tick(engine);
+        engine.onChat("[Bazaar] Claimed 128 coins from selling 64x Wheat at 2 each!"); tick(engine);
+        menu(mc, "Your Bazaar Orders", item("BUY Carrot", "", 1)); tick(engine); tick(engine);
+        check(state(engine) == State.SEARCH && (int)get(engine, "orderLimit") == 2, "A freed slot permits the rejected product to be retried using the server-provided limit");
+        engine.onChat("[Bazaar] You reached your maximum of 2 Bazaar orders!");
+        check(engine.failure() != null, "A second rejection ends the run instead of looping");
+        engine.clearSession();
+    }
+
     private static void spawnAndSacks(Minecraft mc) throws Exception {
         var auto = AutoSell.getInstance();
         var handler = com.jelly.farmhelperv3.handler.MacroHandler.getInstance();
@@ -222,6 +271,8 @@ public final class BazaarSellOrderChecks {
         var oldFeatures = Set.copyOf(pausedFeatures);
         Object location = get(game, "location"), cookie = get(game, "cookieBuffState");
         boolean toggled = handler.isMacroToggled(), sacks = FarmHelperConfig.autoSellSacks;
+        boolean pestEnabled = FarmHelperConfig.enablePestsDestroyer;
+        int pestCount = (int)get(game, "pestsCount"), fullRatio = FarmHelperConfig.inventoryFullRatio;
         int x = FarmHelperConfig.spawnPosX, y = FarmHelperConfig.spawnPosY, z = FarmHelperConfig.spawnPosZ;
         float delay = FarmHelperConfig.macroGuiDelay, randomness = FarmHelperConfig.macroGuiDelayRandomness;
         try {
@@ -231,21 +282,28 @@ public final class BazaarSellOrderChecks {
             FarmHelperConfig.spawnPosX = mc.player.blockPosition().getX(); FarmHelperConfig.spawnPosY = mc.player.blockPosition().getY(); FarmHelperConfig.spawnPosZ = mc.player.blockPosition().getZ();
             FarmHelperConfig.macroGuiDelay = FarmHelperConfig.macroGuiDelayRandomness = 0;
             handler.setMacroToggled(true); handler.getAfterRewarpDelay().reset();
-            check(!auto.tryManageOrdersAtSpawn(), "Initial farming start at spawn must not manage orders");
+            FarmHelperConfig.enablePestsDestroyer = false; set(game, "pestsCount", 2);
+            check(!auto.trySellAtSpawn(), "Initial farming start at spawn must not manage orders");
             auto.onSpawnReturn();
             handler.getAfterRewarpDelay().schedule(1500);
-            check(auto.tryManageOrdersAtSpawn() && !auto.isRunning(), "Wait for confirmed return settling before opening a menu");
+            check(auto.trySellAtSpawn() && !auto.isRunning(), "Wait for confirmed return settling before opening a menu");
             handler.getAfterRewarpDelay().reset();
-            check(auto.tryManageOrdersAtSpawn() && auto.isRunning() && (boolean)get(auto, "managementOnly"),
-                    "One return starts bulk claiming without a session order ledger; features="
+            check(auto.trySellAtSpawn() && auto.isRunning() && !(boolean)get(auto, "managementOnly"),
+                    "One return starts a complete sale; features="
                             + com.jelly.farmhelperv3.feature.FeatureManager.getInstance().getPauseExecutionFeatures()
                             + ", failsafes=" + com.jelly.farmhelperv3.failsafe.FailsafeManager.getInstance().getEmergencyQueue());
-            check(!auto.tryManageOrdersAtSpawn(), "Consumed return cannot retrigger management");
+            check(!auto.trySellAtSpawn(), "Consumed return cannot retrigger management");
             handler.setMacroToggled(false); auto.stop(); handler.setMacroToggled(true);
-            check(!auto.tryManageOrdersAtSpawn(), "Resuming after the order GUI does not re-arm the spawn hook");
+            check(!auto.trySellAtSpawn(), "Resuming after the order GUI does not re-arm the spawn hook");
+            FarmHelperConfig.enablePestsDestroyer = true;
+            auto.onSpawnReturn();
+            check(!auto.trySellAtSpawn() && !auto.isRunning(), "With auto pest clearing on, spawn selling waits while pests remain");
+            set(game, "pestsCount", 0); auto.onSpawnReturn();
+            check(auto.trySellAtSpawn() && auto.isRunning(), "Returning after pests are cleared starts the sale");
+            handler.setMacroToggled(false); auto.stop(); handler.setMacroToggled(true);
             auto.getDontEnableForClock().schedule(300_000);
             auto.onSpawnReturn();
-            check(!auto.tryManageOrdersAtSpawn() && !auto.isRunning(), "Failed sales respect cooldown on return");
+            check(!auto.trySellAtSpawn() && !auto.isRunning(), "Failed sales respect cooldown on return");
             auto.enable(true);
             check(auto.isRunning() && !auto.getDontEnableForClock().isScheduled(), "Manual sale bypasses retry cooldown");
             handler.setMacroToggled(false); auto.stop();
@@ -254,6 +312,16 @@ public final class BazaarSellOrderChecks {
             check(!com.jelly.farmhelperv3.feature.FeatureManager.getInstance().getPauseExecutionFeatures().contains(auto), "Cooldown rejection does not acquire a macro pause");
             auto.getDontEnableForClock().reset();
 
+            // Shared start() is also used by visitors/composter: it must not sell a non-full bag.
+            auto.start(); check(!auto.isRunning(), "Auxiliary callers do not add a third automatic sale trigger");
+            var bag = new ArrayList<ItemStack>();
+            for (int i = 0; i < 36; i++) { bag.add(mc.player.getInventory().getItem(i).copy()); mc.player.getInventory().setItem(i, item("Wheat", "WHEAT", 64)); }
+            FarmHelperConfig.inventoryFullRatio = 100; set(game, "pestsCount", 2);
+            auto.start(); check(auto.isRunning(), "Full inventory remains an independent sale trigger");
+            auto.stop();
+            for (int i = 0; i < 36; i++) mc.player.getInventory().setItem(i, bag.get(i));
+            FarmHelperConfig.inventoryFullRatio = fullRatio; set(game, "pestsCount", 0);
+
             FarmHelperConfig.autoSellBazaarOrders = false;
             auto.enable(true);
             check(auto.getMarketType() == AutoSell.MarketType.BAZAAR && state(engine) == State.IDLE, "Opt-in off preserves the instant-sell path");
@@ -261,7 +329,12 @@ public final class BazaarSellOrderChecks {
             FarmHelperConfig.autoSellBazaarOrders = true; FarmHelperConfig.autoSellMarketType = true;
             auto.enable(true);
             check(auto.getMarketType() == AutoSell.MarketType.NPC && state(engine) == State.IDLE, "NPC mode never enters sell-order processing");
-            auto.stop(); FarmHelperConfig.autoSellMarketType = false;
+            var finish = AutoSell.class.getDeclaredMethod("finishSelling"); finish.setAccessible(true); finish.invoke(auto);
+            menu(mc, "Your Bazaar Orders", item("Claim All Coins", "", 1, "No coins to claim"));
+            auto.getDelayClock().reset(); ((Clock)get(engine, "delay")).reset();
+            auto.onTickEnabled(new Events.TickEvent.ClientTickEvent(Events.TickEvent.Phase.START));
+            check(!auto.isRunning(), "Successful NPC sale ends with a bulk coin check, without enabling order selling");
+            FarmHelperConfig.autoSellMarketType = false;
 
             FarmHelperConfig.autoSellSacks = true;
             auto.enable(true); engine.stop();
@@ -288,6 +361,7 @@ public final class BazaarSellOrderChecks {
             handler.setMacroToggled(toggled); set(game, "location", location); set(game, "cookieBuffState", cookie);
             FarmHelperConfig.spawnPosX = x; FarmHelperConfig.spawnPosY = y; FarmHelperConfig.spawnPosZ = z;
             FarmHelperConfig.autoSellSacks = sacks; FarmHelperConfig.macroGuiDelay = delay; FarmHelperConfig.macroGuiDelayRandomness = randomness;
+            FarmHelperConfig.enablePestsDestroyer = pestEnabled; FarmHelperConfig.inventoryFullRatio = fullRatio; set(game, "pestsCount", pestCount);
             pausedFeatures.clear(); pausedFeatures.addAll(oldFeatures);
         }
     }

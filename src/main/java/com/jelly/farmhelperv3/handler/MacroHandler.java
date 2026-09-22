@@ -536,6 +536,8 @@ public class MacroHandler {
             LogUtils.sendDebug("Activating Pests Destroyer");
             PestsDestroyer.getInstance().start();
             return true;
+        } else if (AutoSell.getInstance().trySellAtSpawn()) {
+            return true;
         } else if (VisitorsMacro.getInstance().canEnableMacro(false, sendErrors)) {
             LogUtils.sendDebug("Activating Visitors Macro");
             VisitorsMacro.getInstance().start();
@@ -549,7 +551,7 @@ public class MacroHandler {
             AutoPestExchange.getInstance().start();
             return true;
         }
-        return AutoSell.getInstance().tryManageOrdersAtSpawn();
+        return false;
     }
 
     @AllArgsConstructor

@@ -115,6 +115,7 @@ public class AutoSell implements IFeature {
 
     @Override
     public void start() {
+        if (!isToggled() || mc.player == null || getInventoryFilledPercentage() < FarmHelperConfig.inventoryFullRatio / 100f) return;
         this.enable(false);
     }
 
@@ -162,10 +163,6 @@ public class AutoSell implements IFeature {
     }
 
     public void enable(boolean manually) {
-        enable(manually, false);
-    }
-
-    private void enable(boolean manually, boolean manageOrders) {
         if (enabled && !manually) return;
         if (!manually && dontEnableForClock.isScheduled() && !dontEnableForClock.passed()) return;
         if (GameStateHandler.getInstance().getCookieBuffState() != GameStateHandler.BuffState.ACTIVE) {
@@ -179,10 +176,11 @@ public class AutoSell implements IFeature {
         PlayerUtils.closeContainer();
         LogUtils.sendWarning("[Auto Sell] Enabling Auto Sell");
         enabled = true;
+        spawnReturnPending = false;
         orderMode = FarmHelperConfig.autoSellBazaarOrders && !FarmHelperConfig.autoSellMarketType;
-        managementOnly = manageOrders;
+        managementOnly = false;
         emptySacks = pickedUpItems = false;
-        if (orderMode) sellOrders.begin(manageOrders);
+        if (orderMode) sellOrders.begin(false);
         marketType = FarmHelperConfig.autoSellMarketType ? MarketType.NPC : MarketType.BAZAAR;
         npcState = NPCState.NONE;
         bazaarState = BazaarState.NONE;
@@ -202,13 +200,16 @@ public class AutoSell implements IFeature {
     /** Called only once a Garden warp has actually landed at the saved spawn. */
     public void onSpawnReturn() { spawnReturnPending = true; }
 
-    public boolean tryManageOrdersAtSpawn() {
+    public boolean trySellAtSpawn() {
         if (!spawnReturnPending || !PlayerUtils.isStandingOnSpawnPoint()) return false;
-        if (!FarmHelperConfig.enableAutoSell || !FarmHelperConfig.autoSellBazaarOrders || FarmHelperConfig.autoSellMarketType) {
+        if (!FarmHelperConfig.enableAutoSell) {
             spawnReturnPending = false;
             return false;
         }
         if (!MacroHandler.getInstance().getAfterRewarpDelay().passed()) return true;
+        // With automatic pest clearing enabled, a return with pests remaining is not a sale trigger.
+        // Full-inventory selling remains a separate trigger with its existing threshold/delay.
+        if (FarmHelperConfig.enablePestsDestroyer && GameStateHandler.getInstance().getPestsCount() > 0) return false;
         // Consume before opening the GUI; resumeMacro must never re-arm this check.
         spawnReturnPending = false;
         if (isRunning() || !MacroHandler.getInstance().isMacroToggled()
@@ -217,7 +218,7 @@ public class AutoSell implements IFeature {
                 || !FailsafeManager.getInstance().getEmergencyQueue().isEmpty()
                 || FeatureManager.getInstance().isAnyOtherFeatureEnabled(this)
                 || FarmHelperConfig.pauseAutoSellDuringJacobsContest && GameStateHandler.getInstance().inJacobContest()) return false;
-        enable(false, true);
+        enable(false);
         return enabled;
     }
 
@@ -272,7 +273,7 @@ public class AutoSell implements IFeature {
         if (event.phase != TickEvent.Phase.START) return;
         if (mc.player == null || mc.level == null) return;
         if (!isRunning()) return;
-        if (orderMode && (!FarmHelperConfig.autoSellBazaarOrders || FarmHelperConfig.autoSellMarketType
+        if (orderMode && (!managementOnly && (!FarmHelperConfig.autoSellBazaarOrders || FarmHelperConfig.autoSellMarketType)
                 || FailsafeManager.getInstance().triggeredFailsafe.isPresent()
                 || !FailsafeManager.getInstance().getEmergencyQueue().isEmpty())) {
             failOrderSale("Order selling was interrupted");
@@ -421,7 +422,7 @@ public class AutoSell implements IFeature {
                     marketType = MarketType.BAZAAR;
                 }
                 if (emptySacks && !pickedUpItems) {
-                    stop();
+                    finishSelling();
                 } else if (orderMode && marketType == MarketType.BAZAAR) {
                     sellOrders.begin(false);
                 }
@@ -524,7 +525,7 @@ public class AutoSell implements IFeature {
                             if (hasShitItemsInInventory()) {
                                 marketType = MarketType.NPC;
                             } else {
-                                stop();
+                                finishSelling();
                             }
                         } else {
                             PlayerUtils.closeContainer();
@@ -548,7 +549,7 @@ public class AutoSell implements IFeature {
                         }
                         if (!shouldSell) {
                             LogUtils.sendDebug("[Auto Sell] Nothing to sell, disabling Auto Sell");
-                            stop();
+                            finishSelling();
                             break;
                         }
                         setNpcState(NPCState.OPEN_MENU);
@@ -613,7 +614,7 @@ public class AutoSell implements IFeature {
                             if (FarmHelperConfig.autoSellSacks && !emptySacks) {
                                 setSacksState(SacksState.OPEN_MENU);
                             } else {
-                                stop();
+                                finishSelling();
                             }
                         } else {
                             PlayerUtils.closeContainer();
@@ -652,6 +653,7 @@ public class AutoSell implements IFeature {
         if (!enabled) return;
         if (event.type != 0) return;
         String message = ChatFormatting.stripFormatting(event.message.getString());
+        if (orderMode) sellOrders.onChat(message);
         if (message.contains("You do not have the Sack of Sacks unlocked!")) {
             emptySacks = true;
             sacksState = SacksState.CLOSE_MENU;
@@ -686,6 +688,18 @@ public class AutoSell implements IFeature {
         LogUtils.sendWarning("[Auto Sell] " + reason + ". Keeping remaining items; automatic selling paused for 5 minutes.");
         dontEnableForClock.schedule(300_000);
         stop();
+    }
+
+    /** Successful NPC/instant-sale completion also collects any outstanding Bazaar proceeds. */
+    private void finishSelling() {
+        PlayerUtils.closeContainer();
+        managementOnly = true;
+        orderMode = true;
+        marketType = MarketType.BAZAAR;
+        npcState = NPCState.NONE;
+        sacksState = SacksState.NONE;
+        delayClock.reset(); timeoutClock.reset();
+        sellOrders.begin(true);
     }
 
     public boolean eligibleForSellOrder(ItemStack stack) {
@@ -771,7 +785,7 @@ public class AutoSell implements IFeature {
 
     private float getInventoryFilledPercentage() {
         int filled = 0;
-        for (int i = 8; i < 45; i++) {
+        for (int i = 9; i < 45; i++) {
             if (mc.player.inventoryMenu.getSlot(i).hasItem()) {
                 filled++;
             }

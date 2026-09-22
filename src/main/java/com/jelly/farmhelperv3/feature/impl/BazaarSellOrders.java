@@ -20,7 +20,8 @@ import java.util.regex.Pattern;
 /** The Bazaar branch of Auto Sell. All GUI mutations run on the client thread. */
 public final class BazaarSellOrders {
     enum State { IDLE, ORDERS, NEXT, SEARCH, PRODUCT, AMOUNT, SIGN, PRICE, CONFIRM, SUBMITTED, CLAIM_ALL, CLAIMED, DONE, FAILED }
-    enum ReadOrders { BASELINE, SUBMISSION }
+    enum ReadOrders { BASELINE, SUBMISSION, AFTER_CLAIM }
+    enum ClaimPhase { BEFORE_SALE, AFTER_SALE, RECOVERY, ONLY }
     record Product(String id, String name) {}
     record Key(String name, int amount, BigDecimal price) {}
     record Order(int slot, Key key, boolean full, String owner) {}
@@ -34,6 +35,9 @@ public final class BazaarSellOrders {
     private ReadOrders purpose;
     private List<Order> orders = List.of();
     private boolean managementOnly;
+    private ClaimPhase claimPhase;
+    private boolean claimAcknowledged, recoveredOrderLimit;
+    private int orderLimit = -1, openOrderCount;
     private Product product;
     private Key submitted;
     private int amount, inventoryBefore;
@@ -44,6 +48,7 @@ public final class BazaarSellOrders {
     public void begin(boolean managementOnly) {
         stop();
         this.managementOnly = managementOnly;
+        claimPhase = managementOnly ? ClaimPhase.ONLY : ClaimPhase.BEFORE_SALE;
         attempted.clear();
         nonBazaarItems.clear();
         openOrders(ReadOrders.BASELINE);
@@ -51,13 +56,42 @@ public final class BazaarSellOrders {
 
     public void stop() {
         state = State.IDLE;
+        claimPhase = null; claimAcknowledged = recoveredOrderLimit = false;
         product = null; submitted = null; failure = null;
         expectedContainer = expectedSlot = expectedButton = -1;
         delay.reset(); timeout.reset();
     }
-    public void clearSession() { stop(); orders = List.of(); nonBazaarItems.clear(); }
+    public void clearSession() { stop(); orders = List.of(); nonBazaarItems.clear(); orderLimit = -1; }
     public boolean done() { return state == State.DONE; }
     public String failure() { return failure; }
+
+    public void onChat(String message) {
+        if (state == State.IDLE || state == State.DONE || state == State.FAILED) return;
+        var full = Pattern.compile("^\\[Bazaar] You reached your maximum of (\\d+) Bazaar orders!?$").matcher(message);
+        if (full.matches()) {
+            try { orderLimit = Integer.parseInt(full.group(1)); }
+            catch (NumberFormatException ignored) { fail("Cannot read Bazaar order limit"); return; }
+            if (orderLimit < 1) { fail("Invalid Bazaar order limit"); return; }
+            if (!managementOnly && claimPhase == null) recoverOrderLimit();
+        } else if (state == State.CLAIMED && (message.startsWith("[Bazaar] Claiming orders")
+                || message.startsWith("[Bazaar] Claimed ") && message.contains("coins from selling")
+                || message.startsWith("[Bazaar]") && message.toLowerCase(Locale.ROOT).contains("no coins to claim"))) {
+            claimAcknowledged = true;
+            delay.schedule(1000); // Let the native batch finish before refreshing or resuming.
+        }
+    }
+
+    private void recoverOrderLimit() {
+        if (recoveredOrderLimit) {
+            fail("All " + orderLimit + " Bazaar order slots are still occupied after claiming; keeping remaining items");
+            return;
+        }
+        recoveredOrderLimit = true;
+        if (product != null) attempted.remove(product.id);
+        submitted = null;
+        claimPhase = ClaimPhase.RECOVERY;
+        openOrders(ReadOrders.BASELINE);
+    }
     public boolean isConfirmedNonBazaarItem(String id) { return !id.isEmpty() && nonBazaarItems.contains(id); }
 
     /** Only an explicit server rejection establishes that a custom item cannot be listed. */
@@ -102,7 +136,10 @@ public final class BazaarSellOrders {
             SignUtils.setTextToWriteOnString(Integer.toString(amount));
             SignUtils.confirmSign(); next(State.PRICE); return;
         }
-        if (state == State.CLAIMED) { state = State.DONE; return; }
+        if (state == State.CLAIMED) {
+            if (claimAcknowledged) finishClaim();
+            return;
+        }
         if (state == State.SUBMITTED) {
             openOrders(ReadOrders.SUBMISSION);
             return;
@@ -113,7 +150,8 @@ public final class BazaarSellOrders {
         switch (state) {
             case ORDERS -> {
                 if (!orderMenu(title)) break;
-                if (managementOnly) claimAllCoins(); else acceptOrders();
+                openOrderCount = countOpenOrders();
+                if (claimPhase != null) claimAllCoins(); else acceptOrders();
             }
             case CLAIM_ALL -> {
                 if (title != null && title.startsWith("Bazaar ➜ ")) claimAllCoins();
@@ -206,13 +244,21 @@ public final class BazaarSellOrders {
             for (int i = 0; i < 36; i++) {
                 ItemStack stack = mc.player.getInventory().getItem(i);
                 String id = InventoryUtils.skyblockId(stack);
-                if (!AutoSell.getInstance().eligibleForSellOrder(stack) || id.isEmpty() || !attempted.add(id)) continue;
+                if (!AutoSell.getInstance().eligibleForSellOrder(stack) || id.isEmpty() || attempted.contains(id)) continue;
+                if (orderLimit > 0 && openOrderCount >= orderLimit) {
+                    if (purpose == ReadOrders.AFTER_CLAIM)
+                        fail("All " + orderLimit + " Bazaar order slots are still occupied after claiming; keeping remaining items");
+                    else recoverOrderLimit();
+                    return;
+                }
+                attempted.add(id);
                 product = new Product(id, clean(stack.getHoverName().getString()));
                 amount = inventoryCount(id);
                 searchProduct(); return;
             }
         }
-        state = State.DONE;
+        claimPhase = ClaimPhase.AFTER_SALE;
+        openOrders(ReadOrders.BASELINE);
     }
 
     private void claimAllCoins() {
@@ -221,7 +267,8 @@ public final class BazaarSellOrders {
         if (buttons.size() == 1) {
             Slot button = buttons.getFirst();
             String details = lore(button).toLowerCase(Locale.ROOT);
-            if (details.contains("no coins to claim") || details.contains("nothing to claim")) { state = State.DONE; return; }
+            if (details.contains("no coins to claim") || details.contains("nothing to claim")) { finishClaim(); return; }
+            claimAcknowledged = false;
             click(button, false);
             next(State.CLAIMED);
             delay.schedule(Math.max(500, FarmHelperConfig.getRandomGUIMacroDelay()));
@@ -232,9 +279,28 @@ public final class BazaarSellOrders {
             PlayerUtils.sendChatMessage("/bz");
             next(State.CLAIM_ALL);
         } else {
-            LogUtils.sendWarning("[Auto Sell] No bulk coin-claim button found; leaving orders unchanged.");
-            state = State.DONE;
+            if (openOrderCount == 0) finishClaim();
+            else fail("No bulk coin-claim button found; keeping remaining items and orders");
         }
+    }
+
+    private void finishClaim() {
+        ClaimPhase finished = claimPhase;
+        claimPhase = null;
+        if (finished == ClaimPhase.AFTER_SALE || finished == ClaimPhase.ONLY) state = State.DONE;
+        else openOrders(ReadOrders.AFTER_CLAIM);
+    }
+
+    private int countOpenOrders() {
+        int count = 0;
+        for (Slot slot : slots()) {
+            String name = clean(slot.getItem().getHoverName().getString());
+            if (!name.startsWith("BUY ") && !name.startsWith("SELL ")) continue;
+            String owner = InventoryUtils.getItemLore(slot.getItem()).stream().map(BazaarSellOrders::clean)
+                    .filter(line -> line.startsWith("By: ")).map(line -> line.substring(4).replaceFirst("^\\[[^]]+] ", "")).findFirst().orElse("");
+            if (owner.isEmpty() || owner.equals(mc.getUser().getName())) count++;
+        }
+        return count;
     }
 
     static boolean isClaimAllCoins(String name, List<String> lore) {
