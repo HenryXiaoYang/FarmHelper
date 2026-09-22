@@ -39,6 +39,8 @@ public final class BazaarSellOrderChecks {
         check(!isClaimAllCoins("Claim All Items", List.of("Value: 100 coins")), "Never mistake an item-claim button for coins");
         check(!isClaimAllCoins("Claim All", List.of("Coins and items from buy orders")), "Do not claim mixed buy-order items");
         check(!isClaimAllCoins("Claim All", List.of("Claim coins and items")), "Generic mixed claims are excluded even without a buy-order label");
+        check(noClaimableCoins("[Bazaar] You don't have any coins to claim!") && noClaimableCoins("Nothing to claim"), "Empty claims complete without waiting for a credited-coins message");
+        check(!noClaimableCoins("[Bazaar] Claimed 20 coins from selling 10x Wheat at 2 each!"), "Credited coins are not classified as an empty claim");
         System.out.println("FH CHECKS: Bazaar order parsing, exact confirmations, ambiguity and product/quantity guards passed");
     }
 

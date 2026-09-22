@@ -75,7 +75,7 @@ public final class BazaarSellOrders {
             if (!managementOnly && claimPhase == null) recoverOrderLimit();
         } else if (state == State.CLAIMED && (message.startsWith("[Bazaar] Claiming orders")
                 || message.startsWith("[Bazaar] Claimed ") && message.contains("coins from selling")
-                || message.startsWith("[Bazaar]") && message.toLowerCase(Locale.ROOT).contains("no coins to claim"))) {
+                || message.startsWith("[Bazaar]") && noClaimableCoins(message))) {
             claimAcknowledged = true;
             delay.schedule(1000); // Let the native batch finish before refreshing or resuming.
         }
@@ -267,7 +267,7 @@ public final class BazaarSellOrders {
         if (buttons.size() == 1) {
             Slot button = buttons.getFirst();
             String details = lore(button).toLowerCase(Locale.ROOT);
-            if (details.contains("no coins to claim") || details.contains("nothing to claim")) { finishClaim(); return; }
+            if (noClaimableCoins(details)) { finishClaim(); return; }
             claimAcknowledged = false;
             click(button, false);
             next(State.CLAIMED);
@@ -310,6 +310,12 @@ public final class BazaarSellOrders {
         return (name.equals("claim all") || name.equals("claim all!") || name.matches("claim (?:all )?sell orders!?"))
                 && details.contains("coin") && !details.contains("buy order")
                 && !details.contains("and items") && !details.contains("items and");
+    }
+
+    static boolean noClaimableCoins(String text) {
+        text = clean(text).toLowerCase(Locale.ROOT);
+        return text.contains("nothing to claim") || text.contains("no coins to claim")
+                || text.contains("don't have any coins to claim") || text.contains("do not have any coins to claim");
     }
 
     private void searchProduct() {
