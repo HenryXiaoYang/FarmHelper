@@ -1965,17 +1965,17 @@ public class FarmHelperConfig extends NativeConfig {
 
     @Setting(kind = Setting.Kind.NUMBER,
             name = "Inventory Full Time", category = AUTO_SELL, subcategory = "Auto Sell",
-            description = "The time to wait to test if inventory fullness ratio is still the same (or higher)",
-            min = 1, max = 20
+            description = "Seconds inventory must continuously remain at or above the fullness ratio. Resets when Personal Compactor frees space. Minimum 3 seconds.",
+            min = 3, max = 20
     )
-    public static int inventoryFullTime = 6;
+    public static int inventoryFullTime = 3;
 
     @Setting(kind = Setting.Kind.NUMBER,
             name = "Inventory Full Ratio", category = AUTO_SELL, subcategory = "Auto Sell",
-            description = "After reaching this ratio, the macro will start counting from 0 to Inventory Full Time. If the fullness ratio is still the same (or higher) after the time has passed, it will start selling items.",
+            description = "Inventory must stay at or above this ratio for Inventory Full Time before selling. Falling below it resets the timer. 100 means all 36 inventory slots are occupied.",
             min = 1, max = 100
     )
-    public static int inventoryFullRatio = 65;
+    public static int inventoryFullRatio = 100;
     @Setting(kind = Setting.Kind.BUTTON,
             name = "Sell Inventory Now", category = AUTO_SELL, subcategory = "Auto Sell",
             description = "Sells crops in your inventory",

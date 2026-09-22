@@ -274,7 +274,7 @@ public final class BazaarSellOrderChecks {
         Object location = get(game, "location"), cookie = get(game, "cookieBuffState");
         boolean toggled = handler.isMacroToggled(), sacks = FarmHelperConfig.autoSellSacks;
         boolean pestEnabled = FarmHelperConfig.enablePestsDestroyer;
-        int pestCount = (int)get(game, "pestsCount"), fullRatio = FarmHelperConfig.inventoryFullRatio;
+        int pestCount = (int)get(game, "pestsCount"), fullRatio = FarmHelperConfig.inventoryFullRatio, fullTime = FarmHelperConfig.inventoryFullTime;
         int x = FarmHelperConfig.spawnPosX, y = FarmHelperConfig.spawnPosY, z = FarmHelperConfig.spawnPosZ;
         float delay = FarmHelperConfig.macroGuiDelay, randomness = FarmHelperConfig.macroGuiDelayRandomness;
         try {
@@ -319,7 +319,23 @@ public final class BazaarSellOrderChecks {
             var bag = new ArrayList<ItemStack>();
             for (int i = 0; i < 36; i++) { bag.add(mc.player.getInventory().getItem(i).copy()); mc.player.getInventory().setItem(i, item("Wheat", "WHEAT", 64)); }
             FarmHelperConfig.inventoryFullRatio = 100; set(game, "pestsCount", 2);
-            auto.start(); check(auto.isRunning(), "Full inventory remains an independent sale trigger");
+            FarmHelperConfig.inventoryFullTime = 1; // Old saved values must not bypass the minimum.
+            auto.start();
+            check(!auto.isRunning() && auto.getInventoryFilledClock().getRemainingTime() > 2900,
+                    "All automatic callers wait at least three seconds for Personal Compactor");
+            mc.player.getInventory().setItem(0, ItemStack.EMPTY);
+            handler.setMacroToggled(true);
+            auto.onTickShouldEnable(new Events.TickEvent.ClientTickEvent(Events.TickEvent.Phase.START));
+            check(!auto.getInventoryFilledClock().isScheduled(), "Compaction resets the timer immediately, before its deadline");
+            mc.player.getInventory().setItem(0, item("Wheat", "WHEAT", 64));
+            auto.start();
+            check(!auto.isRunning() && auto.getInventoryFilledClock().getRemainingTime() > 2900,
+                    "Refilling starts a fresh three-second interval");
+            set(auto.getInventoryFilledClock(), "endTime", System.currentTimeMillis() + 1000);
+            auto.start(); check(!auto.isRunning(), "Two seconds full is insufficient");
+            set(auto.getInventoryFilledClock(), "endTime", System.currentTimeMillis() - 1);
+            auto.start(); check(auto.isRunning(), "Continuously full inventory remains an independent sale trigger after the delay");
+            handler.setMacroToggled(false);
             auto.stop();
             for (int i = 0; i < 36; i++) mc.player.getInventory().setItem(i, bag.get(i));
             FarmHelperConfig.inventoryFullRatio = fullRatio; set(game, "pestsCount", 0);
@@ -363,7 +379,7 @@ public final class BazaarSellOrderChecks {
             handler.setMacroToggled(toggled); set(game, "location", location); set(game, "cookieBuffState", cookie);
             FarmHelperConfig.spawnPosX = x; FarmHelperConfig.spawnPosY = y; FarmHelperConfig.spawnPosZ = z;
             FarmHelperConfig.autoSellSacks = sacks; FarmHelperConfig.macroGuiDelay = delay; FarmHelperConfig.macroGuiDelayRandomness = randomness;
-            FarmHelperConfig.enablePestsDestroyer = pestEnabled; FarmHelperConfig.inventoryFullRatio = fullRatio; set(game, "pestsCount", pestCount);
+            FarmHelperConfig.enablePestsDestroyer = pestEnabled; FarmHelperConfig.inventoryFullRatio = fullRatio; FarmHelperConfig.inventoryFullTime = fullTime; set(game, "pestsCount", pestCount);
             pausedFeatures.clear(); pausedFeatures.addAll(oldFeatures);
         }
     }

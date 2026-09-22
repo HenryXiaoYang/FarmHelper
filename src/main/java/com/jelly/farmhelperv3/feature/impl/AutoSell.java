@@ -115,8 +115,19 @@ public class AutoSell implements IFeature {
 
     @Override
     public void start() {
-        if (!isToggled() || mc.player == null || getInventoryFilledPercentage() < FarmHelperConfig.inventoryFullRatio / 100f) return;
+        if (!inventoryReadyToSell()) return;
         this.enable(false);
+    }
+
+    private boolean inventoryReadyToSell() {
+        if (!isToggled() || mc.player == null || mc.level == null
+                || getInventoryFilledPercentage() < FarmHelperConfig.inventoryFullRatio / 100f) {
+            inventoryFilledClock.reset();
+            return false;
+        }
+        if (!inventoryFilledClock.isScheduled())
+            inventoryFilledClock.schedule(Math.max(3, FarmHelperConfig.inventoryFullTime) * 1000L);
+        return inventoryFilledClock.passed();
     }
 
     @Override
@@ -149,6 +160,7 @@ public class AutoSell implements IFeature {
     @Override
     public void resetStatesAfterMacroDisabled() {
         dontEnableForClock.reset();
+        inventoryFilledClock.reset();
         spawnReturnPending = false;
     }
 
@@ -225,6 +237,7 @@ public class AutoSell implements IFeature {
     @SubscribeEvent
     public void onWorldUnload(com.jelly.farmhelperv3.event.Events.WorldEvent.Unload event) {
         spawnReturnPending = false;
+        inventoryFilledClock.reset();
         if (enabled) stop();
         sellOrders.clearSession();
     }
@@ -239,11 +252,13 @@ public class AutoSell implements IFeature {
     @SubscribeEvent
     public void onTickShouldEnable(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.START) return;
-        if (mc.player == null || mc.level == null) return;
-        if (!isToggled()) return;
         if (isRunning()) return;
+        if (!MacroHandler.getInstance().isMacroToggled()) {
+            inventoryFilledClock.reset();
+            return;
+        }
+        if (!inventoryReadyToSell()) return;
         if (MacroHandler.getInstance().isTeleporting()) return;
-        if (!MacroHandler.getInstance().isMacroToggled()) return;
         if (!GameStateHandler.getInstance().inGarden()) return;
         if (FailsafeManager.getInstance().triggeredFailsafe.isPresent()) return;
         if (GameStateHandler.getInstance().getServerClosingSeconds().isPresent()) return;
@@ -253,19 +268,7 @@ public class AutoSell implements IFeature {
             return;
         if (dontEnableForClock.isScheduled() && !dontEnableForClock.passed()) return;
 
-        if (inventoryFilledClock.isScheduled() && inventoryFilledClock.passed()) {
-            if (getInventoryFilledPercentage() >= FarmHelperConfig.inventoryFullRatio / 100f) {
-                start();
-            } else {
-                inventoryFilledClock.reset();
-                LogUtils.sendDebug("[Auto Sell] Inventory is not full anymore, resetting inventoryFilledClock...");
-            }
-        } else if (!inventoryFilledClock.isScheduled()) {
-            if (getInventoryFilledPercentage() >= FarmHelperConfig.inventoryFullRatio / 100f) {
-                inventoryFilledClock.schedule((long) (FarmHelperConfig.inventoryFullTime * 1000f));
-                LogUtils.sendDebug("[Auto Sell] Inventory is full, scheduling inventoryFilledClock...");
-            }
-        }
+        start();
     }
 
     @SubscribeEvent
