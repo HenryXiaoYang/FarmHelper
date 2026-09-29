@@ -2597,7 +2597,7 @@ public class FarmHelperConfig extends NativeConfig {
     //</editor-fold>
 
     @Setting(kind = Setting.Kind.NUMBER, name = "Config Version", category = EXPERIMENTAL, subcategory = "Experimental", min = 0, max = 1337)
-    public static int configVersion = 6;
+    public static int configVersion = 7;
 
     public FarmHelperConfig() {
         super();
@@ -2605,7 +2605,7 @@ public class FarmHelperConfig extends NativeConfig {
         if (configVersion < 3) visitorsMacroMaxSpendLimit = 0.7f;
         if (configVersion == 3 && macroType > 7) macroType++;
         if (configVersion <= 5) { filterVisitorsByName = visitorsFilteringMethod; filterVisitorsByRarity = !visitorsFilteringMethod; }
-        configVersion = 6;
+        configVersion = 7;
 
 
         this.addDependency("macroType", "Macro Type", () -> !MacroHandler.getInstance().isMacroToggled());

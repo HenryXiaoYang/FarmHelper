@@ -19,6 +19,7 @@ public final class PortChecks {
     public static void main(String[] args) throws Exception {
         FarmHelperClient.ready = true;
         checkSettingDependencies();
+        checkAutoSellConfigMigration();
         com.jelly.farmhelperv3.feature.impl.BazaarSellOrderChecks.parsers();
         var diagonal = new net.minecraft.world.phys.Vec3(0.0025, 0.0025, 0.0025);
         var trimmed = com.jelly.farmhelperv3.util.helper.PlayerSimulation.trimMovement(diagonal);
@@ -93,6 +94,24 @@ public final class PortChecks {
             }
         } finally { java.nio.file.Files.deleteIfExists(artifact); }
         System.out.println("FarmHelper V3 port checks passed");
+    }
+    private static void checkAutoSellConfigMigration() throws Exception {
+        var migrate = NativeConfig.class.getDeclaredMethod("migrateAutoSellDefaults", JsonObject.class);
+        migrate.setAccessible(true);
+        JsonObject old = JsonParser.parseString("{\"configVersion\":6,\"inventoryFullRatio\":65,\"inventoryFullTime\":6,\"keep\":true}").getAsJsonObject();
+        migrate.invoke(null, old);
+        check(old.get("inventoryFullRatio").getAsInt() == 100 && old.get("inventoryFullTime").getAsInt() == 3
+                && old.get("keep").getAsBoolean(), "Persisted old auto-sell defaults migrate to full inventory for three seconds");
+        for (int seconds : List.of(1, 2, 8)) {
+            old.addProperty("inventoryFullRatio", 90); old.addProperty("inventoryFullTime", seconds);
+            migrate.invoke(null, old);
+            check(old.get("inventoryFullRatio").getAsInt() == 90 && old.get("inventoryFullTime").getAsInt() == Math.max(3, seconds),
+                    "Formerly valid short delays migrate before validation; custom settings survive");
+        }
+        old.addProperty("configVersion", 7); old.addProperty("inventoryFullRatio", 65); old.addProperty("inventoryFullTime", 6);
+        migrate.invoke(null, old);
+        check(old.get("inventoryFullRatio").getAsInt() == 65 && old.get("inventoryFullTime").getAsInt() == 6,
+                "Migration never resets later user edits");
     }
     private static void writeArtifact(java.nio.file.Path file, String id, String minecraft) throws java.io.IOException {
         JsonObject metadata = new JsonObject();

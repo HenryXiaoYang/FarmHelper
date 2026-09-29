@@ -48,10 +48,24 @@ public abstract class NativeConfig {
             if (!Files.exists(file)) importLegacy();
             if (Files.exists(file)) {
                 preserved = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+                migrateAutoSellDefaults(preserved);
                 loadObject(this, preserved);
             }
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Cannot read FarmHelper configuration; original files were not overwritten: " + file, e);
+        }
+    }
+
+    private static void migrateAutoSellDefaults(JsonObject object) {
+        if (object.has("configVersion") && object.get("configVersion").getAsInt() >= 7) return;
+        if (!object.has("inventoryFullTime")) return;
+        int seconds = object.get("inventoryFullTime").getAsInt();
+        if (seconds == 6 && object.has("inventoryFullRatio") && object.get("inventoryFullRatio").getAsInt() == 65) {
+            object.addProperty("inventoryFullTime", 3);
+            object.addProperty("inventoryFullRatio", 100);
+        } else if (seconds == 1 || seconds == 2) {
+            // Migrate formerly valid delays before enforcing the new setting minimum.
+            object.addProperty("inventoryFullTime", 3);
         }
     }
 
